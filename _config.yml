@@ -1,0 +1,29 @@
+---
+
+port: 4000
+host: 0.0.0.0
+safe: false
+
+exclude: [CNAME]
+permalink: /:title
+timezone: null
+lsi: false
+markdown: kramdown
+
+title:       "Robot"
+keywords:    ""
+description: ""
+source_link: ""
+google_analytics_key:
+
+colors:
+  black:     '#111111'
+  white:     '#f8f8f8'
+  blue:      '#29aeb9'
+  green:     '#9bcf2f'
+  purple:    '#c869bf'
+  orange:    '#fab125'
+  turquoise: '#0fbfcf'
+
+kramdown:
+  auto_ids:  false
