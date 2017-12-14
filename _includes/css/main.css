@@ -360,11 +360,13 @@ nav ul li:hover, nav ul li.active {
 .row.display-flex {
     display: flex;
     flex-wrap: wrap;
+    align-content: center;
 }
 
 .row.display-flex > [class * ='col-'] {
     display: flex;
     flex-direction: column;
+    align-content: center;
 }
 
 .feature-icon {
