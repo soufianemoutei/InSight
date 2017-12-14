@@ -22,16 +22,22 @@ style: center
 <p class="feature-body">InSight uses three engines. Two of them are located at its wheels so it can run and turn in the arena. The third engine helps InSight to release movable obstacles.</p>
 </div>
 
+<div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
+<div class="feature-icon"><i class="fa fa-linux fa-2x"></i>
+</div>
+<div class="feature-title">Operation System</div>
+<p class="feature-body">InSight uses ev3dev, which is a Debian Linux-based operating system that runs on several LEGO® MINDSTORMS compatible platforms including the LEGO® MINDSTORMS EV3 and Raspberry Pi-powered BrickPi.</p>
+</div>
 
 </div>
 
 <div class="row display-flex">
 
 <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
-<div class="feature-icon"><i class="fa fa-linux fa-2x"></i>
+<div class="feature-icon">
 </div>
-<div class="feature-title">Operation System</div>
-<p class="feature-body">InSight uses ev3dev, which is a Debian Linux-based operating system that runs on several LEGO® MINDSTORMS compatible platforms including the LEGO® MINDSTORMS EV3 and Raspberry Pi-powered BrickPi.</p>
+<div class="feature-title"></div>
+<p class="feature-body"></p>
 </div>
 
 <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
