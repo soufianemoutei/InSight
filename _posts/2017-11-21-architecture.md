@@ -3,6 +3,7 @@ title: "Architecture"
 bg: blue
 color: white
 fa-icon: cogs
+style: center
 ---
 
 # Architecture
