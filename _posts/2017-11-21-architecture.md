@@ -13,7 +13,7 @@ style: center
 <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
 <div class="feature-icon"><i class="fa fa-flash fa-2x"></i></div>
 <div class="feature-title">The sensors</div>
-<p class="feature-body">InSight uses four sensors that help it to be self-aware of its movement. The gyro and the compass sensor help InSight to know its position. The sonar sensor represents the eyes of InSight that show it where are obstacles so it can avoid bumping into them. InSight can make difference between movable and non-movable obstacles thanks to the sonar and the color sensors.</p>
+<p class="feature-body">InSight uses four sensors that help it to be self-aware of its movement. The gyro and the compass sensor help InSight to know its position. The sonar sensor represents the eyes of InSight that show it where obstacles are, so it can avoid bumping into them. InSight can make difference between movable and non-movable obstacles thanks to the sonar and the color sensors.</p>
 </div>
 
 <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
