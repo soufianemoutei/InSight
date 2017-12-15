@@ -140,10 +140,10 @@ void goToNextCheckpoint(int currentCpId){ // a checkpoint is a corner of a layer
   while(1){
     goStraight(0);
     getPosition(x,y); // I need to specify the x and y
-    if(FinalPositionReached){
+    if(FinalPositionReached){ //
       break;
     }
-    if(obstacleDetected){
+    if(obstacleDetected){ // the reaction of the robot in front of an obsatcle
       turn(90);
       goStraight(2000); //The input value of goStraight has to be adapted according to the Obstacle
       turn(90);
