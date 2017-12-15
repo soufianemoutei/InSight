@@ -126,3 +126,39 @@ void explore() {
   stopRunning();
   freePosition();
 }
+
+void exploreSmallArena(){
+  initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
+  for (int i = 1; i <= 4; i++){
+    goToNextCheckpoint(i);
+  }
+  goToNextCheckpoint(0);
+  changeLayer();
+}
+
+void goToNextCheckpoint(int currentCpId){ // a checkpoint is a corner of a layer of the arena
+  while(1){
+    goStraight(0);
+    getPosition(x,y); // I need to specify the x and y
+    if(FinalPositionReached){ //
+      break;
+    }
+    if(obstacleDetected){ // the reaction of the robot in front of an obsatcle
+      turn(90);
+      goStraight(2000); //The input value of goStraight has to be adapted according to the Obstacle
+      turn(90);
+      goStraight(2000);
+      turn(-90);
+      goStraight(2000);
+      turn(-90);
+    }
+
+  }
+
+
+}
+
+void changeLayer(void){
+  goStraight(1500);
+  turn(-90);
+}
