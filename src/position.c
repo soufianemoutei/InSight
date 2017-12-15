@@ -1,164 +1,90 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "ev3.h"
-#include "ev3_port.h"
-#include "ev3_tacho.h"
+#include <pthread.h>
+#include <math.h>
+#include "position.h"
 #include "engines.h"
 #include "sensors.h"
-#include "position.h"
-#include "obstacle.h"
+#include "ev3.h"
+#include "ev3_sensor.h"
+#include "ev3_port.h"
 
-Engines engines;
-int runningDirection = 1; // Positive:1. Else, -1
+Position position;
 
-void initEng()
-{
-  printf("Engine initialization...\n");
+int updating = 1;
+pthread_t updateThread;
+pthread_mutex_t positionMutex;
 
-  while (ev3_tacho_init() < 1) sleep(1);
+void initPosition(float x, float y) {
+	position = (Position) {x,y};
 
-  if (ev3_search_tacho_plugged_in(RIGHT_PORT,0,&(engines.wheelEng.right),0) && ev3_search_tacho_plugged_in(LEFT_PORT,0,&(engines.wheelEng.left),0)) {
-    printf("Wheels' engines were found!\n");
-    engines.wheelEng.both[0] = engines.wheelEng.right;
-    engines.wheelEng.both[1] = engines.wheelEng.left;
+	printf("INIT: x = %f, y = %f\n", x, y);
 
-    set_tacho_stop_action_inx(engines.wheelEng.right, TACHO_RESET);
-    set_tacho_stop_action_inx(engines.wheelEng.left, TACHO_RESET);
-    multi_set_tacho_position_sp(engines.wheelEng.both, 0);
-    multi_set_tacho_position(engines.wheelEng.both, 0);
-  } else {
-    printf("Wheels' engines were NOT found!\n");
-  }
+	pthread_mutex_init(&positionMutex, NULL);
 
-  if (ev3_search_tacho_plugged_in(UP_PORT,0,&engines.upEng,0)) {
-    printf("UP engine were found!\n");
-    set_tacho_stop_action_inx(engines.upEng, TACHO_COAST);
-  } else {
-    printf("UP engine were NOT found\n");
-  }
+	if(pthread_create(&updateThread, NULL, update, NULL) == -1) {
+		printf("Failed to create the update thread");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void goStraight(int time) {
-  multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_COAST);
-  multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED);
-  multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
-  multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
-
-  if (!time) {
-    multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_FOREVER);
-  } else {
-    multi_set_tacho_time_sp(engines.wheelEng.both, time);
-    multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
-  }
+void getPosition(float* x, float* y) {
+	pthread_mutex_lock(&positionMutex);
+	*x = position.x;
+	*y = position.y;
+	pthread_mutex_unlock(&positionMutex);
 }
 
-void stopRunning() {
-  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_STOP);
+void* update() {
+	float angle, newAngle, angleDiff;
+	int displacement; // http://www.robotnav.com/position-estimation/
+	int leftWheel = 0, rightWheel = 0;
+
+	angle = getGyroValue();
+
+	while (updating) {
+		newAngle = getGyroValue();
+		
+		getAngleFromSensors();
+
+		leftWheel = leftWheelPosition() - leftWheel;
+		rightWheel = rightWheelPosition() - rightWheel;
+
+		displacement = (rightWheel + leftWheel) * (5.6 * M_PI / 360.0) / 2.0;
+		angleDiff = newAngle - angle;
+
+		if (angleDiff < 0.0) {
+			angleDiff += 360.0;
+		}
+
+		if (angleDiff > 360.0) {
+			angleDiff -= 360.0;
+		}
+
+		pthread_mutex_lock(&positionMutex);
+		position.x += displacement * cos(angle * M_PI / 180.0);
+		position.y += displacement * sin(angle * M_PI / 180.0);
+		printf("UPDATING POSITION TO: x = %f, y = %f\n", position.x, position.y);
+		pthread_mutex_unlock(&positionMutex);
+
+		angle = newAngle;
+
+		sleep(UPDATE_TIME);
+	}
+
+	pthread_exit(NULL);
 }
 
-int isRunning() {
-  FLAGS_T flagsL, flagsR;
-  get_tacho_state_flags(engines.wheelEng.left,&flagsL);
-  get_tacho_state_flags(engines.wheelEng.right,&flagsR);
-  return (flagsL != TACHO_STATE__NONE_ && flagsR != TACHO_STATE__NONE_);
-  //return (flags == TACHO_RUNNING);
+void freePosition() {
+	updating = 0;
+	if (pthread_join(updateThread, NULL)) {
+		perror("Failed to close the update thread");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void turn(int degree){
-
-  printf("TURNING BY %d degrees\n", degree);
-
-  int s = (degree > 0 ? 1 : -1);
-  degree = s * degree;
-
-  int halftime = 2265; // the time for 180 degree
-  int time = degree * halftime / 180;
-
-  set_tacho_speed_sp(engines.wheelEng.right, s*SPEED);
-  set_tacho_speed_sp(engines.wheelEng.left, -s*SPEED);
-
-  multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
-  multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
-  multi_set_tacho_time_sp(engines.wheelEng.both, time);
-  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
-}
-
-int leftWheelPosition() {
-  int buf;
-  get_tacho_position(engines.wheelEng.left,&buf);
-  return buf;
-}
-
-int rightWheelPosition() {
-  int buf;
-  get_tacho_position(engines.wheelEng.right,&buf);
-  return buf;
-}
-
-void upAction() {
-  printf("UP:\n");
-  set_tacho_speed_sp(engines.upEng, -SPEED/2);
-  set_tacho_ramp_up_sp(engines.upEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.upEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.upEng, 2000);
-  set_tacho_command_inx(engines.upEng, TACHO_RUN_TIMED);
-  sleep(2);
-}
-
-void downAction() {
-  printf("DOWN:\n");
-  set_tacho_speed_sp(engines.upEng, SPEED/2);
-  set_tacho_ramp_up_sp(engines.upEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.upEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.upEng, 2000);
-  set_tacho_command_inx(engines.upEng, TACHO_RUN_TIMED);
-  sleep(2);
-}
-
-void explore() {
-  initPosition(40.0,10.0);
-  turn(90);
-  sleep(2);
-  goStraight(0);
-  detectObstacles();
-  sleep(30);
-  stopRunning();
-  freePosition();
-}
-
-void exploreSmallArena(){
-  initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
-  for (int i = 1; i <= 4; i++){
-    goToNextCheckpoint(i);
-  }
-  goToNextCheckpoint(0);
-  changeLayer();
-}
-
-void goToNextCheckpoint(int currentCpId){ // a checkpoint is a corner of a layer of the arena
-  while(1){
-    goStraight(0);
-    getPosition(x,y); // I need to specify the x and y
-    if(FinalPositionReached){
-      break;
-    }
-    if(obstacleDetected){
-      turn(90);
-      goStraight(2000); //The input value of goStraight has to be adapted according to the Obstacle
-      turn(90);
-      goStraight(2000);
-      turn(-90);
-      goStraight(2000);
-      turn(-90);
-    }
-
-  }
-
-
-}
-
-void changeLayer(void){
-  goStraight(1500);
-  turn(-90);
+void getAngleFromSensors() {
+	printf("Angle given by the gyro sensor: %f\n",getGyroValue());
+	printf("Angle given by the compass sensor: %f\n",getCompassValue());
 }
