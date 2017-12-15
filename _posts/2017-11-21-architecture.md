@@ -25,7 +25,7 @@ style: center
 <div class="col-xs-12 col-sm-4 col-md-4 col-lg-4">
 <div class="feature-icon"><i class="fa fa-linux fa-2x"></i>
 </div>
-<div class="feature-title">Operation System</div>
+<div class="feature-title">Operating System</div>
 <p class="feature-body">InSight uses ev3dev, which is a Debian Linux-based operating system that runs on several LEGO® MINDSTORMS compatible platforms including the LEGO® MINDSTORMS EV3 and Raspberry Pi-powered BrickPi.</p>
 </div>
 
