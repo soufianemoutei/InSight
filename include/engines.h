@@ -35,5 +35,8 @@ int rightWheelPosition();
 void explore();
 void upAction();
 void downAction();
+void exploreSmallArena();
+void goToNextCheckpoint(int currentCpId);
+void changeLayer();
 
 #endif
