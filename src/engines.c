@@ -103,24 +103,43 @@ int rightWheelPosition() {
 
 void upAction() {
   printf("UP:\n");
-  set_tacho_speed_sp(engines.upEng, -SPEED/2);
-  set_tacho_ramp_up_sp(engines.upEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.upEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.upEng, 2000);
-  set_tacho_command_inx(engines.upEng, TACHO_RUN_TIMED);
+  set_tacho_speed_sp(engines.backEng, -SPEED/2);
+  set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
+  set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
+  set_tacho_time_sp(engines.backEng, 2000);
+  set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
 
 void downAction() {
   printf("DOWN:\n");
-  set_tacho_speed_sp(engines.upEng, SPEED/2);
-  set_tacho_ramp_up_sp(engines.upEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.upEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.upEng, 2000);
-  set_tacho_command_inx(engines.upEng, TACHO_RUN_TIMED);
+  set_tacho_speed_sp(engines.backEng, SPEED/2);
+  set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
+  set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
+  set_tacho_time_sp(engines.backEng, 2000);
+  set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
 
+void turnRight() {
+  printf("RIGHT:\n");
+  set_tacho_speed_sp(engines.frontEng, SPEED/4);
+  set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
+  set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+  set_tacho_time_sp(engines.frontEng, 2000);
+  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+  sleep(2);
+}
+
+void turnLeft() {
+  printf("LEFT:\n");
+  set_tacho_speed_sp(engines.frontEng, -SPEED/4);
+  set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
+  set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+  set_tacho_time_sp(engines.frontEng, 2000);
+  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+  sleep(2);
+}
 void explore() {
   initPosition(40.0,10.0);
   turn(90);
