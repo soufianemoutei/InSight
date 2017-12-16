@@ -4,8 +4,8 @@
 #ifndef __CLIENT__
 #define __CLIENT__
 
-#define SERV_ADDR "A0:E6:F8:FC:BB:10"     /* Whatever the address of the server is */
-#define TEAM_ID 4                       /* Your team ID */
+#define SERV_ADDR "40:F0:2F:DD:B5:97"     /* Whatever the address of the server is */
+#define TEAM_ID 3                       /* Your team ID */
 
 extern int s;
 extern uint16_t msgId;
@@ -23,14 +23,14 @@ void closeClient();
 #define MSG_KICK 3
 #define MSG_CUSTOM 4
 
-int receive();
+void receive();
 
 //Sending
 #define MSG_POSITION 4
 #define MSG_MAPDATA 5
 #define MSG_MAPDONE 6
 
-void sendToServer();
+void startSending();
 void* send_position();
 void send_map();
 void send_done();
