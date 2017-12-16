@@ -60,6 +60,7 @@ void goStraight(int time) {
 
 void stopRunning() {
   multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_STOP);
+  set_tacho_command_inx(engines.frontEng, TACHO_STOP);
 }
 
 int isRunning() {
@@ -106,7 +107,7 @@ void upAction() {
   set_tacho_speed_sp(engines.backEng, -SPEED/2);
   set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.backEng, 2000);
+  set_tacho_time_sp(engines.backEng, 1000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
@@ -116,30 +117,40 @@ void downAction() {
   set_tacho_speed_sp(engines.backEng, SPEED/2);
   set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.backEng, 2000);
+  set_tacho_time_sp(engines.backEng, 1000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
 
-void turnRight() {
+void turnRight(int angle) {
   printf("RIGHT:\n");
   set_tacho_speed_sp(engines.frontEng, SPEED/4);
   set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.frontEng, 2000);
-  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-  sleep(2);
+  if(!angle){
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
+  }else {
+    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+    sleep(2);
+  }
 }
 
-void turnLeft() {
+void turnLeft(int angle) {
   printf("LEFT:\n");
   set_tacho_speed_sp(engines.frontEng, -SPEED/4);
   set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.frontEng, 2000);
-  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-  sleep(2);
+  
+  if(!angle){
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
+  }else {
+    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+    sleep(2);
+  }
 }
+
 void explore() {
   initPosition(40.0,10.0);
   turn(90);
