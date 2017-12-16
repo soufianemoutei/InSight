@@ -8,14 +8,60 @@
 #include "engines.h"
 #include "sensors.h"
 #include "obstacle.h"
+#include <time.h>
 
+int distance;
+int lastDistance;
+int length;
+int threshold;
+
+
+int detectObstacles() {
+ clock_t before, difference;
+ int sec;
+ int d;
+ float angle;
  
-void detectObstacles() {
-  while (isRunning() && getSonarValue() > DISTANCE_FROM_OBSTACLE);
-  if (getSonarValue() <= DISTANCE_FROM_OBSTACLE) {
+ while (isRunning() && getSonarValue() > DISTANCE_FROM_OBSTACLE);
+ if (getSonarValue() <= DISTANCE_FROM_OBSTACLE) {
     stopRunning();
     printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
-    //if (getColorValue() == 5) { // BALL
+    lastDistance = getSonarValue();
+    scanRight();
+    /*compute length: length = sin(angle)*d */
+    scanLeft();
+    /*compute length : length = =length + sin(angle)*d*/
+    return length
+   
+ int scanRight(int* d, int* angle) {
+   before = clock();
+   turnRight(0);
+   while(getSonarValue()-lastDistance<threshold);
+   stopRunning();
+   difference = clock() - before;
+   sec = difference / CLOCKS_PER_SEC;
+   printf("SEC: %d\n", sec);
+   *d= getSonarValue();
+   /*compute angle : angle = speed * sec ! check units*/
+   turnLeft(angle); 
+ }
+  int scanleft(int* d, int* angle) {
+   before = clock();
+   turnLeft(0);
+   while(getSonarValue()-lastDistance<threshold);
+   stopRunning();
+   difference = clock() - before;
+   sec = difference / CLOCKS_PER_SEC;
+   printf("SEC: %d\n", sec);
+   d = getSonarValue();
+   /*compute angle : angle = speed * sec ! check units*/
+   turnRight(angle);
+ }
+   
+   
+   
+   
+   //if (getColorValue() == 5) { // BALL
     if (0) { // BALL
       printf("MOVABLE Obstacle!");
       upAction();

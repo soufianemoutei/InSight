@@ -7,7 +7,8 @@
 
 #define LEFT_PORT 68
 #define RIGHT_PORT 65
-#define UP_PORT 66
+#define BACK_PORT 66
+#define FRONT_PORT 67
 #define MAXSPEED 1050
 #define SPEED MAXSPEED/8
 
@@ -19,7 +20,8 @@ typedef struct Wheel {
 
 typedef struct Engines {
   Wheel wheelEng;
-  uint8_t upEng;
+  uint8_t backEng;
+  uint8_t frontEng
 } Engines;
 
 extern Engines engines;
