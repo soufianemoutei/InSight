@@ -31,22 +31,24 @@ void initEng()
     printf("Wheels' engines were NOT found!\n");
   }
 
-  if (ev3_search_tacho_plugged_in(BACK_PORT,0,&engines.backEng,0)) {
+  if (ev3_search_tacho_plugged_in(BACK_PORT,0,&engines.backEng,20)) {
     printf("BACK engine were found!\n");
-    set_tacho_stop_action_inx(engines.backEng, TACHO_COAST);
+   // set_tacho_stop_action_inx(engines.backEng, TACHO_COAST);
+//set_tacho_command_inx(engines.backEng, TACHO_STOP);
   } else {
     printf("BACK engine were NOT found\n");
   }
-  if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
+  if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,20)) {
     printf("FRONT engine were found!\n");
-    set_tacho_stop_action_inx(engines.frontEng, TACHO_COAST);
+   // set_tacho_stop_action_inx(engines.frontEng, TACHO_COAST);
+//set_tacho_command_inx(engines.frontEng, TACHO_STOP);
   } else {
     printf("FRONT engine were NOT found\n");
 }
-
+}
 void goStraight(int time) {
   multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_COAST);
-  multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED);
+  multi_set_tacho_speed_sp(engines.wheelEng.both, -SPEED);
   multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
   multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
 
@@ -60,7 +62,6 @@ void goStraight(int time) {
 
 void stopRunning() {
   multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_STOP);
-  set_tacho_command_inx(engines.frontEng, TACHO_STOP);
 }
 
 int isRunning() {
@@ -75,19 +76,22 @@ void turn(int degree){
 
   printf("TURNING BY %d degrees\n", degree);
 
-  int s = (degree > 0 ? 1 : -1);
-  degree = s * degree;
+  //int s = (degree > 0 ? 1 : -1);
+  //degree = s * degree;
 
-  int halftime = 2265; // the time for 180 degree
-  int time = degree * halftime / 180;
+//  int halftime = 2265; // the time for 180 degree
+ // int time = degree * halftime / 180;
 
-  set_tacho_speed_sp(engines.wheelEng.right, s*SPEED);
-  set_tacho_speed_sp(engines.wheelEng.left, -s*SPEED);
+  //set_tacho_speed_sp(engines.wheelEng.right, SPEED);
+  multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED);
 
-  multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
+    set_tacho_position_sp( engines.wheelEng.left, -degree*180/90);
+    set_tacho_position_sp( engines.wheelEng.right, degree*180/90);
+    multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS );
+/*  multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
   multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
   multi_set_tacho_time_sp(engines.wheelEng.both, time);
-  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
+  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);�*/
 }
 
 int leftWheelPosition() {
@@ -107,7 +111,7 @@ void upAction() {
   set_tacho_speed_sp(engines.backEng, -SPEED/2);
   set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.backEng, 1000);
+  set_tacho_time_sp(engines.backEng, 2000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
@@ -117,40 +121,30 @@ void downAction() {
   set_tacho_speed_sp(engines.backEng, SPEED/2);
   set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.backEng, 1000);
+  set_tacho_time_sp(engines.backEng, 2000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
 
-void turnRight(int angle) {
+void turnRight() {
   printf("RIGHT:\n");
   set_tacho_speed_sp(engines.frontEng, SPEED/4);
   set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  if(!angle){
-    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
-  }else {
-    set_tacho_time_sp(engines.frontEng, 2000);
-    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-    sleep(2);
-  }
+  set_tacho_time_sp(engines.frontEng, 2000);
+  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+  sleep(2);
 }
 
-void turnLeft(int angle) {
+void turnLeft() {
   printf("LEFT:\n");
   set_tacho_speed_sp(engines.frontEng, -SPEED/4);
   set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
   set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  
-  if(!angle){
-    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
-  }else {
-    set_tacho_time_sp(engines.frontEng, 2000);
-    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-    sleep(2);
-  }
+  set_tacho_time_sp(engines.frontEng, 2000);
+  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+  sleep(2);
 }
-
 void explore() {
   initPosition(40.0,10.0);
   turn(90);
@@ -172,13 +166,15 @@ void exploreSmallArena(){
 }
 
 void goToNextCheckpoint(int currentCpId){ // a checkpoint is a corner of a layer of the arena
-  while(1){
+printf("Current Checkpoint ID = %d\n",currentCpId); 
+ while(1){
     goStraight(0);
-    getPosition(x,y); // I need to specify the x and y
-    if(FinalPositionReached){ //
-      break;
-    }
-    if(obstacleDetected){ // the reaction of the robot in front of an obsatcle
+    // getPosition(x,y); // I need to specify the x and y
+    //if(FinalPositionReached){ //
+     // break;
+    //}
+	int val = getSonarValue();
+    if(val<200){ // the reaction of the robot in front of an obsatcle
       turn(90);
       goStraight(2000); //The input value of goStraight has to be adapted according to the Obstacle
       turn(90);
