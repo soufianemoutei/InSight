@@ -31,12 +31,17 @@ void initEng()
     printf("Wheels' engines were NOT found!\n");
   }
 
-  if (ev3_search_tacho_plugged_in(UP_PORT,0,&engines.upEng,0)) {
-    printf("UP engine were found!\n");
-    set_tacho_stop_action_inx(engines.upEng, TACHO_COAST);
+  if (ev3_search_tacho_plugged_in(BACK_PORT,0,&engines.backEng,0)) {
+    printf("BACK engine were found!\n");
+    set_tacho_stop_action_inx(engines.backEng, TACHO_COAST);
   } else {
-    printf("UP engine were NOT found\n");
+    printf("BACK engine were NOT found\n");
   }
+  if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
+    printf("FRONT engine were found!\n");
+    set_tacho_stop_action_inx(engines.frontEng, TACHO_COAST);
+  } else {
+    printf("FRONT engine were NOT found\n");
 }
 
 void goStraight(int time) {
