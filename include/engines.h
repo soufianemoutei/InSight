@@ -21,7 +21,7 @@ typedef struct Wheel {
 typedef struct Engines {
   Wheel wheelEng;
   uint8_t backEng;
-  uint8_t frontEng
+  uint8_t frontEng;
 } Engines;
 
 extern Engines engines;
