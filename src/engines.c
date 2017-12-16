@@ -75,23 +75,11 @@ int isRunning() {
 void turn(int degree){
 
   printf("TURNING BY %d degrees\n", degree);
-
-  //int s = (degree > 0 ? 1 : -1);
-  //degree = s * degree;
-
-//  int halftime = 2265; // the time for 180 degree
- // int time = degree * halftime / 180;
-
-  //set_tacho_speed_sp(engines.wheelEng.right, SPEED);
   multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED);
 
     set_tacho_position_sp( engines.wheelEng.left, -degree*180/90);
     set_tacho_position_sp( engines.wheelEng.right, degree*180/90);
     multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS );
-/*  multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
-  multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
-  multi_set_tacho_time_sp(engines.wheelEng.both, time);
-  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);�*/
 }
 
 int leftWheelPosition() {
@@ -126,25 +114,35 @@ void downAction() {
   sleep(2);
 }
 
-void turnRight() {
-  printf("RIGHT:\n");
-  set_tacho_speed_sp(engines.frontEng, SPEED/4);
-  set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.frontEng, 2000);
-  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-  sleep(2);
+void turnRight(int angle) {
+    printf("RIGHT:\n");
+    set_tacho_speed_sp(engines.frontEng, SPEED/4);
+    set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+  if(!angle){
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
+  }else {
+    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+     sleep(2);
+   }
 }
 
-void turnLeft() {
-  printf("LEFT:\n");
-  set_tacho_speed_sp(engines.frontEng, -SPEED/4);
-  set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
-  set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
-  set_tacho_time_sp(engines.frontEng, 2000);
-  set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-  sleep(2);
+void turnLeft(int angle) {
+	printf("LEFT:\n");
+	set_tacho_speed_sp(engines.frontEng, -SPEED/4);
+	set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+
+   if(!angle){
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
+  }else {
+    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
+    sleep(2);
+  }
 }
+
 void explore() {
   initPosition(40.0,10.0);
   turn(90);
