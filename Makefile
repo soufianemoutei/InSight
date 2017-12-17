@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O2 -std=gnu99 -W -Wall -Wno-comment -c
+CFLAGS = -std=gnu99 -Wall -Wno-comment -c
 
 ODIR = obj
 SDIR = src
