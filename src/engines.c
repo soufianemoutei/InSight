@@ -47,12 +47,14 @@ void initEng()
 }
 }
 void goStraight(int time) {
+  int direction = 1;
+  if (time == -1){direction = -1;}	
   multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_COAST);
-  multi_set_tacho_speed_sp(engines.wheelEng.both, -SPEED);
+  multi_set_tacho_speed_sp(engines.wheelEng.both, -direction*SPEED);
   multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
   multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
 
-  if (!time) {
+  if (!time|| time == -1) {
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_FOREVER);
   } else {
     multi_set_tacho_time_sp(engines.wheelEng.both, time);
