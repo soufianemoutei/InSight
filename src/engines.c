@@ -148,40 +148,20 @@ void turnRight(int angle) {
 void explore() {
   initPosition(40.0,10.0);
   turn(-90);
-  sleep(2); 
-  int val;
-  goStraight(0);
-        while(1){
-            val = getSonarValue();
-            if(val<100){
-
- // detectObstacles();
-        //sleep(30);
-                stopRunning();
-                turn(90);
-                turnRight(90);
-                //val = getSonarValue();
-                goStraight(0);
-                while(1){   // may be we can find another condition
-                        val = getSonarValue();
-                        printf("SONAR VALUE : %d\n",val);
-                        if(val > 400){break;}
-
-           }
-                sleep(2);
-                stopRunning();
-
-                printf("Trying not to crash.....\n");
-
-                turn(-95);
-                turnLeft(90);
-                sleep(2);
-                goStraight(5000);
-                freePosition();
-
-        //break;
-        }
-     }
+  sleep(2);
+  
+  while(1){
+    if(getSonarValue() <= 100){
+      detectObstaclesF();
+      detectObstaclesB();
+      detectObstaclesB();
+      detectObstaclesB();
+      if (getSonarValue() > 100) {
+        goStraight(0); 
+      }
+    }
+  }
+  freePosition();
 }
 
 void exploreSmallArena(){
