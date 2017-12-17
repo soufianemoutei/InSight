@@ -138,7 +138,7 @@ void* send_position() {
     string[6] = (uint8_t) (xInt >> 8);
     string[7] = (uint8_t) yInt;		/* y */
     string[8]= (uint8_t) (yInt >> 8);
-    print("Sending: %s\n", string);
+    printf("Sending: %s\n", string);
     write(s, string, 9);
     sleep(2);
   }
