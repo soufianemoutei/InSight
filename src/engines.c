@@ -114,7 +114,7 @@ void downAction() {
   sleep(2);
 }
 
-void turnRight(int angle) {
+void turnLeft(int angle) {
     printf("RIGHT:\n");
     set_tacho_speed_sp(engines.frontEng, SPEED/4);
     set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
@@ -122,13 +122,13 @@ void turnRight(int angle) {
   if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   }else {
-    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_time_sp(engines.frontEng, 2500);
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
      sleep(2);
    }
 }
 
-void turnLeft(int angle) {
+void turnRight(int angle) {
 	printf("LEFT:\n");
 	set_tacho_speed_sp(engines.frontEng, -SPEED/4);
 	set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
@@ -137,7 +137,7 @@ void turnLeft(int angle) {
    if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   }else {
-    set_tacho_time_sp(engines.frontEng, 2000);
+    set_tacho_time_sp(engines.frontEng, 2500);
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
     sleep(2);
   }
@@ -157,7 +157,7 @@ void explore() {
         //sleep(30);
                 stopRunning();
                 turn(90);
-                turnLeft(90);//still need to switch turn left and turn right
+                turnRight(90);
                 //val = getSonarValue();
                 goStraight(0);
                 while(1){   // may be we can find another condition
@@ -172,7 +172,7 @@ void explore() {
                 printf("Trying not to crash.....\n");
 
                 turn(-95);
-                turnRight(90);
+                turnLeft(90);
                 sleep(2);
                 goStraight(5000);
                 freePosition();
