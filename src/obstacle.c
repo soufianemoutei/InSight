@@ -20,7 +20,7 @@ void detectObstacles() {
   clock_t before, difference;
   int sec;
   callsOfdetectObstacles++;
-  turn(((callsOfdetectObstacles == 1 || callsOfdetectObstacles == 3) ? 1 : -1) * 90);
+  turn(((callsOfdetectObstacles == 1) ? 1 : -1) * 90);
   sleep(2);
   goStraight(0);
   before = clock();

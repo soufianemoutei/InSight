@@ -126,7 +126,7 @@ void* send_position() {
     getPosition(&x,&y);
     xInt = (uint16_t) x;
     yInt = (uint16_t) y;
-    sprintf(string,"%d%d%d%c%d%d%d",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
+    sprintf(string,"%d%d%c%d%d%d",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
     printf("Sending: %s\n", string);
     write(s, string, 9);
     sleep(2);

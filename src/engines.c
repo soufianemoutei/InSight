@@ -12,6 +12,10 @@
 Engines engines;
 int runningDirection = 1; // Positive:1. Else, -1
 
+const char const *color[] = { "?", "BLACK", "BLUE", "GREEN", "YELLOW", "RED", "WHITE", "BROWN" };
+#define COLOR_COUNT  (( int )( sizeof( color ) / sizeof( color[ 0 ])))
+
+
 void initEng()
 {
   printf("Engine initialization...\n");
@@ -125,6 +129,7 @@ void explore() {
     if (getSonarValue() <= 50) {
       stopRunning();
       printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
+      printf("\r(%s) \n", color[ val ]);
       if (getColorValue() == 5) {
         printf("RED BALL\n");
       }
