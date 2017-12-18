@@ -16,10 +16,14 @@ int updating = 1;
 pthread_t updateThread;
 pthread_mutex_t positionMutex;
 
+int heading = 90;
+
 void initPosition(float x, float y) {
 	position = (Position) {x,y};
 
 	printf("INIT: x = %f, y = %f\n", x, y);
+	//heading = getGyroValue();
+	printf("Initial angle: %d \n", heading);
 
 	pthread_mutex_init(&positionMutex, NULL);
 
@@ -37,43 +41,62 @@ void getPosition(float* x, float* y) {
 }
 
 void* update() {
-	float angle, newAngle, angleDiff;
+	int angle, newAngle, angleDiff;
 	int displacement; // http://www.robotnav.com/position-estimation/
-	int leftWheel = 0, rightWheel = 0;
+	int leftWheel = 0, rightWheel = 0, leftWheelPrev = 0, rightWheelPrev = 0;
 
 	angle = getGyroValue();
 
+	leftWheelPrev = leftWheelPosition();
+	rightWheelPrev = rightWheelPosition();
+
 	while (updating) {
+		if (!isRunning()) {
+			continue;
+		}
 		newAngle = getGyroValue();
-		
+
 		getAngleFromSensors();
 
-		leftWheel = leftWheelPosition() - leftWheel;
-		rightWheel = rightWheelPosition() - rightWheel;
+		leftWheel = leftWheelPosition();
+		rightWheel = rightWheelPosition();
 
-		displacement = (rightWheel + leftWheel) * (5.6 * M_PI / 360.0) / 2.0;
+		displacement = (leftWheel + rightWheel - leftWheelPrev - rightWheelPrev) * (5.6 * M_PI / 360.0) / 2.0;
 		angleDiff = newAngle - angle;
 
-		if (angleDiff < 0.0) {
-			angleDiff += 360.0;
-		}
+		heading -=  angleDiff;
 
-		if (angleDiff > 360.0) {
-			angleDiff -= 360.0;
-		}
+		printf("HEADING = %d°\n", heading);
 
 		pthread_mutex_lock(&positionMutex);
-		position.x += displacement * cos(angle * M_PI / 180.0);
-		position.y += displacement * sin(angle * M_PI / 180.0);
+		position.x -= displacement * cos(heading * M_PI / 180);
+		position.y += displacement * sin(heading * M_PI / 180);
 		printf("UPDATING POSITION TO: x = %f, y = %f\n", position.x, position.y);
 		pthread_mutex_unlock(&positionMutex);
 
 		angle = newAngle;
+		leftWheelPrev = leftWheel;
+		rightWheelPrev = rightWheel;
+
+		printf("NEXT TO WALL:%d\n", nextToWall());
 
 		sleep(UPDATE_TIME);
 	}
 
 	pthread_exit(NULL);
+}
+
+char nextToWall() {
+	char near = 0;
+	pthread_mutex_lock(&positionMutex);
+	if (position.x < 1.5 || position.x > 100.0) {
+		near = 1;
+	}
+	if (position.y < 1.5 || position.y > 190.0) {
+		near = 1;
+	}
+	pthread_mutex_unlock(&positionMutex);
+	return near;
 }
 
 void freePosition() {
@@ -85,6 +108,6 @@ void freePosition() {
 }
 
 void getAngleFromSensors() {
-	printf("Angle given by the gyro sensor: %f\n",getGyroValue());
-	printf("Angle given by the compass sensor: %f\n",getCompassValue());
+	printf("Angle given by the gyro sensor: %d\n",getGyroValue());
+	//	printf("Angle given by the compass sensor: %f\n",getCompassValue());
 }

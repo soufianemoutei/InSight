@@ -67,14 +67,14 @@ int getColorValue() {
   return val;
 }
 
-float getGyroValue() {
-  float angle;
-  get_sensor_value0(sensors.gyroSensor,&angle);
+int getGyroValue() {
+  int angle;
+  get_sensor_value(0, sensors.gyroSensor,&angle);
   return angle;
 }
 
-float getCompassValue() {
-  float angle;
-  get_sensor_value0(sensors.compassSensor,&angle);
+int getCompassValue() {
+  int angle;
+  get_sensor_value(0, sensors.compassSensor,&angle);
   return angle;
 }

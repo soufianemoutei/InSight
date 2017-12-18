@@ -82,7 +82,7 @@ void receive() {
 
     case MSG_STOP:
     printf("STOP\n");
-    closeClient();
+    //    closeClient();
     break;
 
     case MSG_KICK:
@@ -104,14 +104,13 @@ void startSending() {
 
   printf ("I'm navigating...\n");
 
-  explore();
-
-  srand(time(NULL));
-
-  if(pthread_create(&updateThread, NULL, send_position, NULL) == -1) {
+  if(pthread_create(&sendPositionThread, NULL, send_position, NULL) == -1) {
     printf("pthread_create");
     exit(EXIT_FAILURE);
   }
+
+
+  explore();
 
   //send_map();
   //send_done();
@@ -122,22 +121,12 @@ void* send_position() {
   /* Send 30 POSITION messages, a BALL message, 1 position message, then a NEXT message */
   float x, y;
   uint16_t xInt, yInt;
-
   printf("SENDING POSITION\n");
-
   while (sending) {
     getPosition(&x,&y);
     xInt = (uint16_t) x;
     yInt = (uint16_t) y;
-
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_POSITION;
-    string[5] = (uint8_t) xInt;          /* x */
-    string[6] = (uint8_t) (xInt >> 8);
-    string[7] = (uint8_t) yInt;		/* y */
-    string[8]= (uint8_t) (yInt >> 8);
+    sprintf(string,"%d%d%d%c%d%d%d",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
     printf("Sending: %s\n", string);
     write(s, string, 9);
     sleep(2);

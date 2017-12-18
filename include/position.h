@@ -23,6 +23,8 @@ void* update();
 
 void freePosition();
 
+char nextToWall();
+
 void getAngleFromSensors();
 
 #endif

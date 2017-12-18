@@ -16,7 +16,7 @@ extern Sensors sensors;
 void initSensors();
 int getColorValue();
 int getSonarValue();
-float getGyroValue();
-float getCompassValue();
+int getGyroValue();
+int getCompassValue();
 
 #endif

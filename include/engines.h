@@ -15,7 +15,7 @@
 typedef struct Wheel {
   uint8_t left;
   uint8_t right;
-  uint8_t both[2];
+  uint8_t both[3];
 } Wheel;
 
 typedef struct Engines {
@@ -35,10 +35,10 @@ int isRunning();
 int leftWheelPosition();
 int rightWheelPosition();
 void explore();
-void upAction();
-void downAction();
+void backEngine(char direction);
 void exploreSmallArena();
 void goToNextCheckpoint(int currentCpId);
 void changeLayer();
+void turnSonar(int angle);
 
 #endif
