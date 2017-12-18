@@ -129,7 +129,7 @@ void explore() {
     if (getSonarValue() <= 50) {
       stopRunning();
       printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
-      printf("\r(%s) \n", color[ val ]);
+      printf("\r(%s) \n", color[getColorValue()]);
       if (getColorValue() == 5) {
         printf("RED BALL\n");
       }
