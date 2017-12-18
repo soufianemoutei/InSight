@@ -13,7 +13,7 @@
 #include "position.h"
 
 int s;
-uint16_t msgId = 0;
+uint16_t msgId = 0x0000;
 
 pthread_t sendPositionThread;
 int sending = 1, receiving = 1;
@@ -120,17 +120,44 @@ void* send_position() {
   char string[58];
   /* Send 30 POSITION messages, a BALL message, 1 position message, then a NEXT message */
   float x, y;
-  uint16_t xInt, yInt;
+  int16_t xInt, yInt;
   printf("SENDING POSITION\n");
+  /*while (sending) {
+    getPosition(&x,&y);
+    xInt = (int16_t) x;
+    yInt = (int16_t) y;
+    //sprintf(string,"%x%hhx%hhx%hhx%x%x",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
+    *((uint16_t *) string) = msgId++;
+    string[2] = TEAM_ID;
+    string[3] = 0xFF;
+    string[4] = MSG_POSITION;
+    string[5] = (uint8_t) xInt;
+    string[6] = (uint8_t) (xInt >> 8);
+    string[7] = (uint8_t) yInt;
+    string[8]= (uint8_t) (yInt >> 8);
+    write(s, string, 9);
+    printf("Sending: %s\n", string);
+    sleep(2);
+  }*/
+  int i = 0;
   while (sending) {
     getPosition(&x,&y);
-    xInt = (uint16_t) x;
-    yInt = (uint16_t) y;
-    sprintf(string,"%d%d%c%d%d%d",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
-    printf("Sending: %s\n", string);
+    xInt = (int16_t) x;
+    yInt = (int16_t) y;
+
+    *((uint16_t *) string) = msgId++;
+    string[2] = TEAM_ID;
+    string[3] = 0xFF;
+    string[4] = MSG_POSITION;
+    string[5] = (uint8_t) xInt;
+    string[6] = (uint8_t) (xInt >> 8);
+    string[7] = (uint8_t) yInt;
+    string[8]= (uint8_t) (yInt >> 8);
     write(s, string, 9);
-    sleep(2);
+    Sleep( 2000 );
+    i++;
   }
+
 }
 
 void send_map() {

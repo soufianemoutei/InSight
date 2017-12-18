@@ -15,6 +15,7 @@ int runningDirection = 1; // Positive:1. Else, -1
 const char const *color[] = { "?", "BLACK", "BLUE", "GREEN", "YELLOW", "RED", "WHITE", "BROWN" };
 #define COLOR_COUNT  (( int )( sizeof( color ) / sizeof( color[ 0 ])))
 
+pthread_t movingEyesThread;
 
 void initEng()
 {
@@ -49,6 +50,10 @@ void initEng()
     //set_tacho_stop_action_inx(engines.frontEng, TACHO_RESET);
     set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
     set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+    if(pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) {
+      printf("pthread_create");
+      exit(EXIT_FAILURE);
+    }
   } else {
     printf("FRONT engine were NOT found\n");
   }
@@ -61,6 +66,15 @@ void goStraight(int time) {
   } else {
     multi_set_tacho_time_sp(engines.wheelEng.both, time);
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
+  }
+}
+
+void* move_eyes() {
+  while (1) {
+    turnSonar(-1);
+    sleep(2);
+    turnSonar(1);
+    sleep(2);
   }
 }
 
@@ -110,12 +124,39 @@ void turnSonar(int angle) {
   if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   }else {
-    set_tacho_time_sp(engines.frontEng, 2500);
+    set_tacho_time_sp(engines.frontEng, 1500);
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
     sleep(2);
   }
 }
 
+void explore() {
+  int i = 0;
+  initPosition(40.0,10.0);
+  turn(-90);
+  sleep(2);
+  while (1) {
+    goStraight(0);
+    if (getSonarValue() <= 100) {
+      stopRunning();
+      printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
+      turn(runningDirection*90);
+      sleep(2);
+      goStraight(1000);
+      turn(runningDirection*90);
+      runningDirection = -runningDirection
+      sleep(2);
+    }
+    i++;
+  }
+  if (pthread_join(movingEyesThread, NULL)) {
+    perror("pthread_join");
+    exit(EXIT_FAILURE);
+  }
+  freePosition();
+}
+
+/*
 void explore() {
   int i = 0;
   initPosition(40.0,10.0);
@@ -143,7 +184,7 @@ void explore() {
   }
   freePosition();
 }
-
+*/
 void exploreSmallArena(){
   initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
   for (int i = 1; i <= 4; i++){

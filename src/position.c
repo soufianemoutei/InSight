@@ -78,6 +78,13 @@ void* update() {
 		leftWheelPrev = leftWheel;
 		rightWheelPrev = rightWheel;
 
+		pthread_mutex_lock(&positionMutex);
+		if (position.x < 0.0 || position.x > 120.0 || position.y < 0.0 || position.y > 200.0) {
+			stopRunning();
+			break;
+		}
+		pthread_mutex_unlock(&positionMutex);
+
 		printf("NEXT TO WALL:%d\n", nextToWall());
 
 		sleep(UPDATE_TIME);

@@ -10,7 +10,7 @@
 #define BACK_PORT 66
 #define FRONT_PORT 67
 #define MAXSPEED 1050
-#define SPEED MAXSPEED/8
+#define SPEED MAXSPEED/4
 
 typedef struct Wheel {
   uint8_t left;
@@ -26,6 +26,7 @@ typedef struct Engines {
 
 extern Engines engines;
 extern int runningDirection;
+extern pthread_t movingEyesThread;
 
 void initEng();
 void goStraight(int time);
@@ -40,5 +41,6 @@ void exploreSmallArena();
 void goToNextCheckpoint(int currentCpId);
 void changeLayer();
 void turnSonar(int angle);
+void* move_eyes();
 
 #endif
