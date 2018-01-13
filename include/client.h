@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <pthread.h>
 
 #ifndef __CLIENT__
 #define __CLIENT__
@@ -10,8 +9,8 @@
 extern int s;
 extern uint16_t msgId;
 
-extern pthread_t sendPositionThread;
-extern int sending;
+extern char receiving;
+extern char sending;
 
 void initClient();
 void closeClient();
@@ -29,9 +28,11 @@ void receive();
 #define MSG_POSITION 4
 #define MSG_MAPDATA 5
 #define MSG_MAPDONE 6
+#define MSG_OBSTACLE 7
 
-void startSending();
-void* send_position();
+void send_ack(uint16_t msgID, char dst);
+void send_position(int16_t x, int16_t y);
+void send_obstacle(int16_t x, int16_t y);
 void send_map();
 void send_done();
 
