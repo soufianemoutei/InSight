@@ -11,18 +11,33 @@
 #include "position.h"
 #include <time.h>
 
-int length;
-int weidth;
+//int length;
+//int weidth;
 
-int calls = 0;
+//int calls = 0;
 
 char closeToObstacles() {
   return (getSonarValue() <= DISTANCE_FROM_OBSTACLE);
 }
 
-char farObstacle() {
+/*char farObstacle() {
   return (getSonarValue() <= (DISTANCE_FROM_OBSTACLE + 300));
+}*/
+
+void BasicReaction()
+{
+  stopRunning();
+  turnSonar(-90);
+  int rightx = getSonarValue();
+  turnSonar(180);
+  int leftx = getSonarValue();
+  printf("left distance: %d right distance: %d\n", leftx, rightx);
+  turnSonar(-90);
+  goStraight(500,-1); // have a "safety" distance
+  turn((rightx >= leftx ? -1 : 1) * 90);
 }
+
+/*
 
 void detectObstacles() {
   turnSonar(180);
@@ -69,3 +84,4 @@ void actionAfterDetecting() {
     actionAfterDetecting();
   }
 }
+*/
