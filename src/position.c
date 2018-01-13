@@ -96,13 +96,18 @@ void* update() {
 		position.y += displacement * sin(heading * M_PI / 180);
 		printf("UPDATING POSITION TO: x = %f, y = %f\n", position.x, position.y);
 		if ((((int) (position.x / 5)) != position.ux) || (((int) (position.y / 5)) != position.y)) {
+			for (int y = position.uy + 1; y <= ((int) (position.y / 5)); y++) {
+				for (int x = position.ux + 1; x <= ((int) (position.x / 5)); x++) {
+					if (map[y][x] == NOT_VISITED) {
+						printf("UPDATING THE POSITION ON THE MAP: x = %d, y = %d\n", x, y);
+						map[y][x] = VISITED;
+					}
+				}
+			}
 			position.ux = (int) (position.x / 5);
 			position.uy = (int) (position.y / 5);
-			printf("THE POSITION ON THE MAP IS: x = %d, y = %d\n", position.ux, position.uy);
+			printf("SENDING THE POSITION TO THE SERVER: x = %d, y = %d\n", position.ux, position.uy);
 			send_position(position.ux,position.uy);
-			if (map[position.uy][position.ux] == NOT_VISITED) {
-				map[position.uy][position.ux] = VISITED;
-			}
 		}
 		pthread_mutex_unlock(&positionMutex);
 
