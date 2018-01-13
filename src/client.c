@@ -15,8 +15,7 @@
 int s;
 uint16_t msgId = 0x0000;
 
-pthread_t sendPositionThread;
-int sending = 1, receiving = 1;
+char sending = 0, receiving = 1;
 
 void initClient() {
   struct sockaddr_rc addr = {0};
@@ -46,13 +45,12 @@ void initClient() {
 
 void closeClient() {
   receiving = 0;
-  sending = 0;
-  if (pthread_join(sendPositionThread, NULL)) {
-    perror("pthread_join");
-    exit(EXIT_FAILURE);
+  exploring = 0;
+  if (updating != 0) {
+    freePosition();
   }
+  stopRunning();
   close(s);
-
 }
 
 void receive() {
@@ -66,23 +64,24 @@ void receive() {
     exit (EXIT_FAILURE);
   }
 
-  printf("[DEBUG] received %d bytes\n", bytes_read);
-  printf("RECEIVED:%s\n",string);
+  printf("Received %d bytes\n", bytes_read);
+  send_ack(*((uint16_t *) string), string[2]);
 
   switch (string[4]) {
     case MSG_ACK:
-    printf("ACK\n");
+    printf("ACK Message\n");
     printf("STATE:%s\n",(string[7] == 0 ? "OK" : "Error"));
     break;
 
     case MSG_START:
-    printf("START\n");
-    startSending();
+    printf("START Message\n");
+    sending = 1;
+    explore();
     break;
 
     case MSG_STOP:
-    printf("STOP\n");
-    //    closeClient();
+    printf("STOP Message\n");
+    closeClient();
     break;
 
     case MSG_KICK:
@@ -100,168 +99,88 @@ void receive() {
   }
 }
 
-void startSending() {
-
-  printf ("I'm navigating...\n");
-
-  if(pthread_create(&sendPositionThread, NULL, send_position, NULL) == -1) {
-    printf("pthread_create");
-    exit(EXIT_FAILURE);
+void send_ack(uint16_t msgID, char dst) {
+  char string[8];
+  if (!sending) {
+    return ;
   }
-
-
-  explore();
-
-  //send_map();
-  //send_done();
+  printf("SENDING ACK MESSAGE TO %d\n",dst);
+  *((uint16_t *) string) = msgId++;
+  string[2] = TEAM_ID;
+  string[3] = dst;
+  string[4] = MSG_ACK;
+  string[5] = (uint8_t) msgID;
+  string[6] = (uint8_t) (msgID >> 8);
+  string[7] = 0;
+  write(s, string, 8);
 }
 
-void* send_position() {
-  char string[58];
-  /* Send 30 POSITION messages, a BALL message, 1 position message, then a NEXT message */
-  float x, y;
-  int16_t xInt, yInt;
-  printf("SENDING POSITION\n");
-  /*while (sending) {
-    getPosition(&x,&y);
-    xInt = (int16_t) x;
-    yInt = (int16_t) y;
-    //sprintf(string,"%x%hhx%hhx%hhx%x%x",(uint16_t) msgId++,TEAM_ID,0xFF,MSG_POSITION, xInt, yInt);
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_POSITION;
-    string[5] = (uint8_t) xInt;
-    string[6] = (uint8_t) (xInt >> 8);
-    string[7] = (uint8_t) yInt;
-    string[8]= (uint8_t) (yInt >> 8);
-    write(s, string, 9);
-    printf("Sending: %s\n", string);
-    sleep(2);
-  }*/
-  int i = 0;
-  while (sending) {
-    getPosition(&x,&y);
-    xInt = (int16_t) x;
-    yInt = (int16_t) y;
-
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_POSITION;
-    string[5] = (uint8_t) xInt;
-    string[6] = (uint8_t) (xInt >> 8);
-    string[7] = (uint8_t) yInt;
-    string[8]= (uint8_t) (yInt >> 8);
-    write(s, string, 9);
-    Sleep( 2000 );
-    i++;
+void send_obstacle(int16_t x, int16_t y) {
+  char string[10];
+  if (!sending) {
+    return ;
   }
+  printf("SENDING OBSTACLE MESSAGE (%d,%d) TO THE SERVER\n",x,y);
+  *((uint16_t *) string) = msgId++;
+  string[2] = TEAM_ID;
+  string[3] = 0xFF;
+  string[4] = MSG_OBSTACLE;
+  string[5] = 0;
+  string[6] = (uint8_t) x;
+  string[7] = (uint8_t) (x >> 8);
+  string[8] = (uint8_t) y;
+  string[9]= (uint8_t) (y >> 8);
+  write(s, string, 10);
+}
 
+void send_position(int16_t x, int16_t y) {
+  char string[9];
+  if (!sending) {
+    return ;
+  }
+  printf("SENDING POSITION (%d,%d) TO THE SERVER\n",x,y);
+  *((uint16_t *) string) = msgId++;
+  string[2] = TEAM_ID;
+  string[3] = 0xFF;
+  string[4] = MSG_POSITION;
+  string[5] = (uint8_t) x;
+  string[6] = (uint8_t) (x >> 8);
+  string[7] = (uint8_t) y;
+  string[8]= (uint8_t) (y >> 8);
+  write(s, string, 9);
 }
 
 void send_map() {
-  char string[58];
-  int x1, x2, y1, y2;
-  printf ("I'm sending my map...\n");
-
-  /* MAP data is in the form MAPDATA | X  X |Y  Y | R | G | B */
-
-  /* Create 1 square green obstacle and 1 round red obstacle*/
-  /* Send only the outline */
-  x1 = rand() % 30;
-  y1= rand() % 30;
-
-  for (int i=x1; i<x1+10; i++){
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_MAPDATA;
-    string[5] = i;          /* x */
-    string[6] = 0x00;
-    string[7] = y1;		/* y */
-    string[8]= 0x00;
-    string[9]= 0;
-    string[10]=254;
-    string[11]= 0;
-    write(s, string, 12);
-    Sleep( 100 );
+  char string[12];
+  if (!sending) {
+    return ;
   }
-  for (int i=x1; i<x1+10; i++){
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_MAPDATA;
-    string[5] = i;          /* x */
-    string[6] = 0x00;
-    string[7] = y1+10;		/* y */
-    string[8]= 0x00;
-    string[9]= 0;
-    string[10]=254;
-    string[11]= 0;
-    write(s, string, 12);
-    Sleep( 100 );
-  }
-  for (int j=y1; j<y1+10; j++){
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_MAPDATA;
-    string[5] = x1;          /* x */
-    string[6] = 0x00;
-    string[7] = j;		/* y */
-    string[8]= 0x00;
-    string[9]= 0;
-    string[10]=254;
-    string[11]= 0;
-    write(s, string, 12);
-    Sleep( 100 );
-  }
-
-  for (int j=y1; j<y1+10; j++){
-    *((uint16_t *) string) = msgId++;
-    string[2] = TEAM_ID;
-    string[3] = 0xFF;
-    string[4] = MSG_MAPDATA;
-    string[5] = x1+10;          /* x */
-    string[6] = 0x00;
-    string[7] = j;		/* y */
-    string[8]= 0x00;
-    string[9]= 0;
-    string[10]=254;
-    string[11]= 0;
-    write(s, string, 12);
-    Sleep( 100 );
-  }
-
-  x2 = 15 +rand() % 20;
-  y2= 15 + rand() % 20;
-
-
-  for (int i=x2-15; i<x2+15; i++){
-    for (int j=y2-15; j<y2+15; j++){
-      if (sqrt((i-x2)*(i-x2) + (j-y2)*(j-y2)) < 15 && sqrt((i-x2)*(i-x2) + (j-y2)*(j-y2))>14){
-        *((uint16_t *) string) = msgId++;
-        string[2] = TEAM_ID;
-        string[3] = 0xFF;
-        string[4] = MSG_MAPDATA;
-        string[5] = i;          /* x */
-        string[6] = 0x00;
-        string[7] = j;		/* y */
-        string[8]= 0x00;
-        string[9]= 254;
-        string[10]=0;
-        string[11]= 0;
-        write(s, string, 12);
-        Sleep( 100 );
-      }
+  printf ("SENDING THE MAP...\n");
+  for (int y; y < MAP_HEIGHT; y++) {
+    for (int x; x < MAP_WIDTH; x++) {
+      *((uint16_t *) string) = msgId++;
+      string[2] = TEAM_ID;
+      string[3] = 0xFF;
+      string[4] = MSG_MAPDATA;
+      string[5] = (uint8_t) x;
+      string[6] = (uint8_t) (x >> 8);
+      string[7] = (uint8_t) y;
+      string[8]= (uint8_t) (y >> 8);
+      string[9]= 0;
+      string[10] = ((map[x][y] == OBSTACLE) ? 0 : 254);
+      string[11] = 0;
+      write(s, string, 12);
     }
   }
+  send_done();
 }
 
 void send_done() {
-  char string[58];
-  printf("Done sending map");
+  char string[5];
+  if (!sending) {
+    return ;
+  }
+  printf("DONE SENDING MAP");
   *((uint16_t *) string) = msgId++;
   string[2] = TEAM_ID;
   string[3] = 0xFF;
