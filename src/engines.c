@@ -8,13 +8,12 @@
 #include "sensors.h"
 #include "position.h"
 #include "obstacle.h"
+#include "client.h"
+#include <time.h>
 
 Engines engines;
-int runningDirection = 1; // Positive:1. Else, -1
-
-const char const *color[] = { "?", "BLACK", "BLUE", "GREEN", "YELLOW", "RED", "WHITE", "BROWN" };
-#define COLOR_COUNT  (( int )( sizeof( color ) / sizeof( color[ 0 ])))
-
+pthread_mutex_t turningMutex;
+char exploring = 1;
 pthread_t movingEyesThread;
 
 void initEng()
@@ -34,6 +33,7 @@ void initEng()
     multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
     multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
   } else {
+    exploring = 0;
     printf("Wheels' engines were NOT found!\n");
   }
 
@@ -43,39 +43,56 @@ void initEng()
     set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
     set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
   } else {
+    engines.backEng = DESC_LIMIT;
     printf("BACK engine were NOT found\n");
   }
+
   if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
     printf("FRONT engine were found!\n");
     //set_tacho_stop_action_inx(engines.frontEng, TACHO_RESET);
-    set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
-    set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+    set_tacho_ramp_up_sp(engines.frontEng, 1000 );  // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.frontEng, 1000 );// 0.1 is the acceleration and decceleration time
+   // turnSonar(90);
+
+    pthread_mutex_init(&turningMutex, NULL);
     if(pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) {
       printf("pthread_create");
       exit(EXIT_FAILURE);
     }
   } else {
+    exploring = 0;
     printf("FRONT engine were NOT found\n");
   }
 }
-void goStraight(int time) {
-  int direction = ((time == -1) ? -1 : 1);
-  multi_set_tacho_speed_sp(engines.wheelEng.both, -direction*SPEED);
-  if (!time || time == -1) {
+
+void goStraight(int time, int direction) {
+  int angleInit = getGyroValue(), angle, error, timeInit;
+
+  multi_set_tacho_speed_sp(engines.wheelEng.both, direction*SPEED_LINEAR/(direction == -1 ? 2 : 1));
+  if (!time) {
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_FOREVER);
   } else {
     multi_set_tacho_time_sp(engines.wheelEng.both, time);
-    multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
-  }
-}
 
-void* move_eyes() {
-  while (1) {
-    turnSonar(-1);
-    sleep(2);
-    turnSonar(1);
-    sleep(2);
+    timeInit = clock() / CLOCKS_PER_SEC;
+    multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
+
+    // To control the error
+    while (clock() / CLOCKS_PER_SEC - timeInit < time) {
+      angle = getGyroValue();
+      error = angle - angleInit;
+      if (abs(error) > 20) {
+stopRunning();
+        set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-error));
+        set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(error));
+        multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
+        Sleep(100);
+        multi_set_tacho_time_sp(engines.wheelEng.both, time - clock() / CLOCKS_PER_SEC + timeInit);
+        multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
+      }
+    }
   }
+  sleep(1);
 }
 
 void stopRunning() {
@@ -91,11 +108,25 @@ int isRunning() {
 }
 
 void turn(int degree){
+  int error;
+
   printf("TURNING BY %d degrees\n", degree);
-  multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED);
-  set_tacho_position_sp( engines.wheelEng.left, -degree*180/90);
-  set_tacho_position_sp( engines.wheelEng.right, degree*180/90);
+
+  multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED_CIRCULAR);
+  set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-degree));
+  set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(degree));
   multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
+
+  // To control the error
+  error = getGyroValue() - degree;
+  /*while (abs(error) > 1) {
+    set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-error));
+    set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(error));
+    multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
+    error = getGyroValue() - degree;
+    Sleep(100);
+  }*/
+  sleep(1);
 }
 
 int leftWheelPosition() {
@@ -111,111 +142,125 @@ int rightWheelPosition() {
 }
 
 void backEngine(char direction) {
-  printf("Back engine:\n");
-  set_tacho_speed_sp(engines.backEng, direction * SPEED/2);
+  if (engines.backEng == DESC_LIMIT) {
+    printf("CANNOT USE BACK ENGINE\n");
+    return ;
+  }
+  set_tacho_speed_sp(engines.backEng, direction * SPEED_BACK_ENGINE);
   set_tacho_time_sp(engines.backEng, 1000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
   sleep(2);
 }
 
 void turnSonar(int angle) {
-  printf("RIGHT:\n");
-  set_tacho_speed_sp(engines.frontEng, (angle < 0 ? 1 : -1) * SPEED/4);
+  set_tacho_speed_sp(engines.frontEng, (angle < 0 ? -1 : 1) * SPEED_FRONT_ENGINE);
+  if(angle<0){angle=-angle;}
   if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
-  }else {
-    set_tacho_time_sp(engines.frontEng, 1500);
+  } else {
+    int d = 240;
+    d = 300;
+    if (angle==180){d=2*d;}
+    set_tacho_time_sp(engines.frontEng,d);//DEGREE_TO_TIME_FE(angle));
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-    sleep(2);
+    Sleep(1500);
   }
 }
 
-void explore() {
+
+
+void cheating(){
   int i = 0;
-  initPosition(40.0,10.0);
-  turn(-90);
-  sleep(2);
-  while (1) {
-    goStraight(0);
-    if (getSonarValue() <= 100) {
-      stopRunning();
-      printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
-      turn(runningDirection*90);
-      sleep(2);
-      goStraight(1000);
-      turn(runningDirection*90);
-      runningDirection = -runningDirection
-      sleep(2);
-    }
-    i++;
-  }
-  if (pthread_join(movingEyesThread, NULL)) {
-    perror("pthread_join");
-    exit(EXIT_FAILURE);
-  }
-  freePosition();
-}
-
-/*
-void explore() {
-  int i = 0;
-  initPosition(40.0,10.0);
-  turn(-90);
-  sleep(2);
-  while (1) {
-    if (i == 2) {
-      backEngine(1);
-    }
-    goStraight(0);
-    if (getSonarValue() <= 50) {
-      stopRunning();
-      printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
-      printf("\r(%s) \n", color[getColorValue()]);
-      if (getColorValue() == 5) {
-        printf("RED BALL\n");
-      }
-      turnSonar(90);
-      sleep(2);
-      detectObstacles();
-      sleep(2);
-      turnSonar(-90);
-    }
-    i++;
-  }
-  freePosition();
-}
-*/
-void exploreSmallArena(){
-  initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
-  for (int i = 1; i <= 4; i++){
-    goToNextCheckpoint(i);
-  }
-  goToNextCheckpoint(0);
-  changeLayer();
-}
-
-void goToNextCheckpoint(int currentCpId){ // a checkpoint is a corner of a layer of the arena
-  printf("Current Checkpoint ID = %d\n",currentCpId);
+initPosition(40.0, 10.0);
   while(1){
-    goStraight(0);
-    // getPosition(x,y); // I need to specify the x and y
-    //if(FinalPositionReached){ //
-    // break;
-    //}
-    int val = getSonarValue();
-    if(val<200){ // the reaction of the robot in front of an obsatcle
-      turn(90);
-      goStraight(2000); //The input value of goStraight has to be adapted according to the Obstacle
-      turn(90);
-      goStraight(2000);
-      turn(-90);
-      goStraight(2000);
-      turn(-90);
-    }
-  }
+goStraight(2000,1);
+if (i%4 == 3 && !closeToObstacles()) { sleep(1);}
+if (closeToObstacles() || i%4 == 3) {
+BasicReaction();
+}/*
+      if(i%4 != 3){
+      if (closeToObstacles()){
+          BasicReaction();
+      }
+    } if(i%4 == 3){
+      sleep(2);
+      BasicReaction();
+    }*/
+    i++;
+	}
+}
+void BasicReaction()
+{
+  stopRunning();
+  turnSonar(-90);
+  //sleep(1);
+  int rightx=getSonarValue();
+  turnSonar(180);
+  //sleep(1);
+  int leftx=getSonarValue();
+  printf("left distance: %d right distance: %d\n", leftx, rightx);
+  turnSonar(-90);
+  //sleep(1);
+  goStraight(500,-1); // have a "safety" distance
+  //sleep(1);
+  if (rightx>=leftx){turn(-90);}
+  else {turn(90);}
+  //sleep(1);
 }
 
-void changeLayer(void){
-  goStraight(1500);
+void exploreSmallArena() {
+  int16_t pos[2];
+  initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
   turn(-90);
+  exploreLayer(1);
+  backEngine(1);
+  getPosition(pos);
+  send_obstacle(pos[0], pos[1]);
+  for (int i = 2; i <= 4; i++){
+    exploreLayer(i);
+  }
+  freePosition();
+  send_map();
 }
+
+void explore(){
+	cheating();
+}
+void exploreLayer(int currentLayerID) {
+  int16_t posInit[2], pos[2];
+  getPosition(posInit);
+  printf("Exploring Layer %d. Starting position (%d,%d)\n",currentLayerID,posInit[0],posInit[1]);
+  do {
+    goStraight(2000,1);
+    if (closeToObstacles()) {
+      stopRunning();
+      pthread_mutex_lock(&turningMutex);
+      printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
+      printf("COLOR: %s\n", getColorName(getColorValue()));
+      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? BALL : OBSTACLE));
+      detectObstacles();
+      pthread_mutex_unlock(&turningMutex);
+    }
+    getPosition(pos);
+    printf("Exploring Layer %d. Current position (%d,%d)\n",currentLayerID,pos[0],pos[1]);
+  } while (pos[0] != posInit[0]-1 || pos[1] != posInit[1]);
+
+  turn(90);
+  goStraight(0,1);
+  do {
+    getPosition(pos);
+  } while (pos[1] != posInit[1]);
+  stopRunning();
+}
+
+void* move_eyes() {
+//  while (exploring) {
+  //  pthread_mutex_lock(&turningMutex);
+    //turnSonar(-30);
+  //  pthread_mutex_unlock(&turningMutex);
+  //  Sleep(10);
+  //  pthread_mutex_lock(&turningMutex);
+  //  turnSonar(30);
+   // pthread_mutex_unlock(&turningMutex);
+ }
+//}
