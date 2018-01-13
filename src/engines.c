@@ -12,9 +12,7 @@
 #include <time.h>
 
 Engines engines;
-pthread_mutex_t turningMutex;
 char exploring = 1;
-pthread_t movingEyesThread;
 
 void initEng()
 {
@@ -52,13 +50,6 @@ void initEng()
     //set_tacho_stop_action_inx(engines.frontEng, TACHO_RESET);
     set_tacho_ramp_up_sp(engines.frontEng, 1000 );  // 0.1 second to reach the full speed
     set_tacho_ramp_down_sp(engines.frontEng, 1000 );// 0.1 is the acceleration and decceleration time
-   // turnSonar(90);
-
-    pthread_mutex_init(&turningMutex, NULL);
-    if(pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) {
-      printf("pthread_create");
-      exit(EXIT_FAILURE);
-    }
   } else {
     exploring = 0;
     printf("FRONT engine were NOT found\n");
@@ -78,15 +69,15 @@ void goStraight(int time, int direction) {
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
 
     // To control the error
-    while (clock() / CLOCKS_PER_SEC - timeInit < time) {
+    while (clock() / CLOCKS_PER_SEC - timeInit < time && isRunning()) {
       angle = getGyroValue();
       error = angle - angleInit;
       if (abs(error) > 20) {
-stopRunning();
+	stopRunning();
         set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-error));
         set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(error));
         multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
-        Sleep(100);
+        Sleep(300);
         multi_set_tacho_time_sp(engines.wheelEng.both, time - clock() / CLOCKS_PER_SEC + timeInit);
         multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
       }
@@ -108,8 +99,6 @@ int isRunning() {
 }
 
 void turn(int degree){
-  int error;
-
   printf("TURNING BY %d degrees\n", degree);
 
   multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED_CIRCULAR);
@@ -119,13 +108,6 @@ void turn(int degree){
 
   // To control the error
   error = getGyroValue() - degree;
-  /*while (abs(error) > 1) {
-    set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-error));
-    set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(error));
-    multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
-    error = getGyroValue() - degree;
-    Sleep(100);
-  }*/
   sleep(1);
 }
 
@@ -141,7 +123,7 @@ int rightWheelPosition() {
   return buf;
 }
 
-void backEngine(char direction) {
+void backEngine(int direction) {
   if (engines.backEng == DESC_LIMIT) {
     printf("CANNOT USE BACK ENGINE\n");
     return ;
@@ -168,99 +150,16 @@ void turnSonar(int angle) {
 }
 
 
-
-void cheating(){
+void explore(){
   int i = 0;
 initPosition(40.0, 10.0);
-  while(1){
+  while(exploring){
 goStraight(2000,1);
 if (i%4 == 3 && !closeToObstacles()) { sleep(1);}
 if (closeToObstacles() || i%4 == 3) {
 BasicReaction();
-}/*
-      if(i%4 != 3){
-      if (closeToObstacles()){
-          BasicReaction();
-      }
-    } if(i%4 == 3){
-      sleep(2);
-      BasicReaction();
-    }*/
+}
     i++;
 	}
 }
-void BasicReaction()
-{
-  stopRunning();
-  turnSonar(-90);
-  //sleep(1);
-  int rightx=getSonarValue();
-  turnSonar(180);
-  //sleep(1);
-  int leftx=getSonarValue();
-  printf("left distance: %d right distance: %d\n", leftx, rightx);
-  turnSonar(-90);
-  //sleep(1);
-  goStraight(500,-1); // have a "safety" distance
-  //sleep(1);
-  if (rightx>=leftx){turn(-90);}
-  else {turn(90);}
-  //sleep(1);
-}
 
-void exploreSmallArena() {
-  int16_t pos[2];
-  initPosition(60.0, 20.0); // the starting position of the robot is in the center back of the arena
-  turn(-90);
-  exploreLayer(1);
-  backEngine(1);
-  getPosition(pos);
-  send_obstacle(pos[0], pos[1]);
-  for (int i = 2; i <= 4; i++){
-    exploreLayer(i);
-  }
-  freePosition();
-  send_map();
-}
-
-void explore(){
-	cheating();
-}
-void exploreLayer(int currentLayerID) {
-  int16_t posInit[2], pos[2];
-  getPosition(posInit);
-  printf("Exploring Layer %d. Starting position (%d,%d)\n",currentLayerID,posInit[0],posInit[1]);
-  do {
-    goStraight(2000,1);
-    if (closeToObstacles()) {
-      stopRunning();
-      pthread_mutex_lock(&turningMutex);
-      printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
-      printf("COLOR: %s\n", getColorName(getColorValue()));
-      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? BALL : OBSTACLE));
-      detectObstacles();
-      pthread_mutex_unlock(&turningMutex);
-    }
-    getPosition(pos);
-    printf("Exploring Layer %d. Current position (%d,%d)\n",currentLayerID,pos[0],pos[1]);
-  } while (pos[0] != posInit[0]-1 || pos[1] != posInit[1]);
-
-  turn(90);
-  goStraight(0,1);
-  do {
-    getPosition(pos);
-  } while (pos[1] != posInit[1]);
-  stopRunning();
-}
-
-void* move_eyes() {
-//  while (exploring) {
-  //  pthread_mutex_lock(&turningMutex);
-    //turnSonar(-30);
-  //  pthread_mutex_unlock(&turningMutex);
-  //  Sleep(10);
-  //  pthread_mutex_lock(&turningMutex);
-  //  turnSonar(30);
-   // pthread_mutex_unlock(&turningMutex);
- }
-//}
