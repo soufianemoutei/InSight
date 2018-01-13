@@ -57,24 +57,45 @@ void initSensors() {
 
 int getSonarValue() {
   int val;
+  if (sensors.sonarSensor == DESC_LIMIT) {
+    printf("CANNOT USE SONAR SENSOR\n");
+    return 0;
+  }
   get_sensor_value(0, sensors.sonarSensor, &val);
   return val;
 }
 
 int getColorValue() {
   int val;
+  if (sensors.colorSensor == DESC_LIMIT) {
+    printf("CANNOT USE COLOR SENSOR\n");
+    return 0;
+  }
   get_sensor_value(0, sensors.colorSensor, &val);
   return val;
 }
 
+char* getColorName(int color) {
+  char* colorArr[] = { "?", "BLACK", "BLUE", "GREEN", "YELLOW", "RED", "WHITE", "BROWN" };
+  return colorArr[color];
+}
+
 int getGyroValue() {
   int angle;
+  if (sensors.gyroSensor == DESC_LIMIT) {
+    printf("CANNOT USE GYRO SENSOR\n");
+    return 0;
+  }
   get_sensor_value(0, sensors.gyroSensor,&angle);
   return angle;
 }
 
 int getCompassValue() {
   int angle;
+  if (sensors.compassSensor == DESC_LIMIT) {
+    printf("CANNOT USE COMPASS SENSOR\n");
+    return 0;
+  }
   get_sensor_value(0, sensors.compassSensor,&angle);
   return angle;
 }
