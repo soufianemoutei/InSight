@@ -9,20 +9,24 @@
 #include "ev3.h"
 #include "ev3_sensor.h"
 #include "ev3_port.h"
+#include "client.h"
 
 Position position;
 
-int updating = 1;
+char updating = 1;
 pthread_t updateThread;
 pthread_mutex_t positionMutex;
+State map[MAP_HEIGHT][MAP_WIDTH];
 
 int heading = 90;
 
 void initPosition(float x, float y) {
-	position = (Position) {x,y};
+	position = (Position) {x,y,((int) x / 5),((int) y / 5)};
 
 	printf("INIT: x = %f, y = %f\n", x, y);
-	//heading = getGyroValue();
+
+	initMap();
+
 	printf("Initial angle: %d \n", heading);
 
 	pthread_mutex_init(&positionMutex, NULL);
@@ -33,16 +37,34 @@ void initPosition(float x, float y) {
 	}
 }
 
-void getPosition(float* x, float* y) {
+void initMap() {
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			map[i][j] = NOT_VISITED;
+		}
+	}
+}
+
+void getPosition(int16_t* pos) {
 	pthread_mutex_lock(&positionMutex);
-	*x = position.x;
-	*y = position.y;
+	pos[0] = position.ux;
+	pos[1] = position.uy;
 	pthread_mutex_unlock(&positionMutex);
 }
 
+void updateMapPosition(int sonarValue, State state) {
+	int16_t x = 0, y = 0;
+	pthread_mutex_lock(&positionMutex);
+	x = (int16_t) ((position.x - (sonarValue / 10) * cos(heading * M_PI / 180)) / 5);
+	x = (int16_t) ((position.x + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
+	map[x][y] = state;
+	pthread_mutex_unlock(&positionMutex);
+}
+
+// http://www.robotnav.com/position-estimation/
 void* update() {
 	int angle, newAngle, angleDiff;
-	int displacement; // http://www.robotnav.com/position-estimation/
+	int displacement;
 	int leftWheel = 0, rightWheel = 0, leftWheelPrev = 0, rightWheelPrev = 0;
 
 	angle = getGyroValue();
@@ -64,14 +86,24 @@ void* update() {
 		displacement = (leftWheel + rightWheel - leftWheelPrev - rightWheelPrev) * (5.6 * M_PI / 360.0) / 2.0;
 		angleDiff = newAngle - angle;
 
+		pthread_mutex_lock(&positionMutex);
+
 		heading -=  angleDiff;
 
 		printf("HEADING = %d°\n", heading);
 
-		pthread_mutex_lock(&positionMutex);
-		position.x -= displacement * cos(heading * M_PI / 180);
+		position.x += displacement * cos(heading * M_PI / 180);
 		position.y += displacement * sin(heading * M_PI / 180);
 		printf("UPDATING POSITION TO: x = %f, y = %f\n", position.x, position.y);
+		if ((((int) (position.x / 5)) != position.ux) || (((int) (position.y / 5)) != position.y)) {
+			position.ux = (int) (position.x / 5);
+			position.uy = (int) (position.y / 5);
+			printf("THE POSITION ON THE MAP IS: x = %d, y = %d\n", position.ux, position.uy);
+			send_position(position.ux,position.uy);
+			if (map[position.uy][position.ux] == NOT_VISITED) {
+				map[position.uy][position.ux] = VISITED;
+			}
+		}
 		pthread_mutex_unlock(&positionMutex);
 
 		angle = newAngle;
@@ -79,31 +111,17 @@ void* update() {
 		rightWheelPrev = rightWheel;
 
 		pthread_mutex_lock(&positionMutex);
-		if (position.x < 0.0 || position.x > 120.0 || position.y < 0.0 || position.y > 200.0) {
+		if (position.ux < 0 || position.ux > 80 || position.uy < 0 || position.uy > 80) {
 			stopRunning();
+			exploring = 0;
 			break;
 		}
 		pthread_mutex_unlock(&positionMutex);
-
-		printf("NEXT TO WALL:%d\n", nextToWall());
 
 		sleep(UPDATE_TIME);
 	}
 
 	pthread_exit(NULL);
-}
-
-char nextToWall() {
-	char near = 0;
-	pthread_mutex_lock(&positionMutex);
-	if (position.x < 1.5 || position.x > 100.0) {
-		near = 1;
-	}
-	if (position.y < 1.5 || position.y > 190.0) {
-		near = 1;
-	}
-	pthread_mutex_unlock(&positionMutex);
-	return near;
 }
 
 void freePosition() {
@@ -116,5 +134,5 @@ void freePosition() {
 
 void getAngleFromSensors() {
 	printf("Angle given by the gyro sensor: %d\n",getGyroValue());
-	//	printf("Angle given by the compass sensor: %f\n",getCompassValue());
+	//printf("Angle given by the compass sensor: %f\n",getCompassValue());
 }
