@@ -31,9 +31,6 @@ typedef struct Engines {
 } Engines;
 
 extern Engines engines;
-extern int runningDirection;
-extern pthread_t movingEyesThread;
-extern pthread_mutex_t turningMutex;
 extern char exploring;
 
 void initEng();
@@ -43,13 +40,8 @@ void stopRunning();
 int isRunning();
 int leftWheelPosition();
 int rightWheelPosition();
-void backEngine(char direction);
+void backEngine(int direction);
 void explore();
-void exploreSmallArena();
-void exploreLayer(int currentLayerID);
 void turnSonar(int angle);
-void* move_eyes();
-void cheating();
-void BasicReaction();
 
 #endif
