@@ -14,26 +14,58 @@
 int length;
 int weidth;
 
-int callsOfdetectObstacles = 0;
+int calls = 0;
+
+char closeToObstacles() {
+  return (getSonarValue() <= DISTANCE_FROM_OBSTACLE);
+}
+
+char farObstacle() {
+  return (getSonarValue() <= (DISTANCE_FROM_OBSTACLE + 300));
+}
 
 void detectObstacles() {
-  clock_t before, difference;
-  int sec;
-  callsOfdetectObstacles++;
-  turn(((callsOfdetectObstacles == 1) ? 1 : -1) * 90);
-  sleep(2);
-  goStraight(0);
-  before = clock();
-  while (getSonarValue() <= DISTANCE_FROM_OBSTACLE && (clock() - before) / CLOCKS_PER_SEC < 10);
-  difference = clock() - before;
-  sleep(2);
-  stopRunning();
-  sec = difference / CLOCKS_PER_SEC;
+  turnSonar(180);
+  if (closeToObstacles()) {
+    printf("An obstacle was found! The distance from this obstacle is: %dmm.\n", getSonarValue());
+    printf("COLOR: %s\n", getColorName(getColorValue()));
+    updateMapPosition(getSonarValue(), (getColorValue() == 5 ? BALL : OBSTACLE));
+    goStraight(0,-1);
+    while (closeToObstacles());
+    stopRunning();
+  }
+  sleep(1);
+  turnSonar(-180);
+goStraight(100,-1);
+  actionAfterDetecting();
+}
 
-  if ((!nextToWall() && callsOfdetectObstacles == 1) || callsOfdetectObstacles == 3) {
-    callsOfdetectObstacles = 0;
-  } else if (callsOfdetectObstacles < 3) {
-    printf("Time spent: %d\n", sec);
-    detectObstacles();
+void actionAfterDetecting() {
+  int timeInit;
+  calls++;
+  turnSonar(-90);
+  if (calls==3 && closeToObstacles()){calls=1;}
+  turn(((calls == 1) ? 1 : -1) * 90);
+  timeInit = clock() / CLOCKS_PER_SEC;
+  goStraight(0,1);
+//sleep(1);
+  while (closeToObstacles() || calls==2) {
+    turnSonar(90);
+    if (farObstacle() || (clock() / CLOCKS_PER_SEC - timeInit > 1)) {
+      stopRunning();
+      calls = 0;
+      return;
+    }
+    turnSonar(-90);
+  }
+  sleep(1);
+  stopRunning();
+
+  if (calls == 3) {
+    turn(90);
+    calls = 0;
+  } else if (calls < 3) {
+    turnSonar(90);
+    actionAfterDetecting();
   }
 }
