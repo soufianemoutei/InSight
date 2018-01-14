@@ -172,13 +172,18 @@ void explore(){
   send_map();
 }
 
-void snake(int case)
+void snake()
 {
   int ob = 0; //for checking to consecutive obstacles
   int round = 1;
+  int i = 0;
 
   turn(-90);
   while (exploring) {
+    if (i % 4 == 3) {
+      correctHeading();
+      sleep(1);
+    }
     goStraight(10000,1);
     while (!closeToObstacles() || onTheMap());
     stopRunning();
@@ -212,5 +217,6 @@ void snake(int case)
       turn(round*90);
     }
     round = -round;
+    i++;
   }
 }
