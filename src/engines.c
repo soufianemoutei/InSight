@@ -164,3 +164,29 @@ void explore(){
   exploring = 0;
   send_map();
 }
+
+void snake()
+{
+  int ob = 0; //for checking to consecutive obstacles
+  int round = 1;
+  turn(-90);
+  while(1){
+    goStraight(10000,1);
+    while(!closeToObstacles());
+    stopRunning();
+    goStraight(750,-1);
+	  sleep(1);
+    turn(round*90);
+	  sleep(1);
+    if(!closeToObstacles()){
+        goStraight(500,1);
+	      sleep(1);
+        ob = 0;
+     }else{ob++;}
+      turn(round*90);
+	  sleep(1);
+    if(ob <2){
+    round = -round;
+    }else{printf("LIMIT REACHED\n");}
+  }
+}
