@@ -18,6 +18,8 @@
 #define SPEED_FRONT_ENGINE MAXSPEED/5
 #define SPEED_BACK_ENGINE MAXSPEED/6
 
+#define ERROR 20
+
 typedef struct Wheel {
   uint8_t left;
   uint8_t right;
@@ -40,6 +42,7 @@ void stopRunning();
 int isRunning();
 int leftWheelPosition();
 int rightWheelPosition();
+void correctHeading();
 void backEngine(int direction);
 void explore();
 void turnSonar(int angle);

@@ -32,8 +32,10 @@ extern State map[MAP_HEIGHT][MAP_WIDTH]; // The map of the arena. It's a matrix 
 void initPosition(float x, float y); // Init the position, the map and the threads
 void initMap(); // Init the map with NOT_VISITED
 void getPosition(int16_t* pos); // Update pos with the current position coordinates
+int getHeading();
 void updateMapPosition(int sonarValue); // It's called when a non-movable obstacle was found, it updates the position of the obstacle on the map with the value OBSTACLE
 void* update(); // The function used with the updating thread. It updates the position and the map
 void freePosition(); // It stops updating and the updating thread as well
+int getNearestInteger(float f);
 
 #endif

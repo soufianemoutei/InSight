@@ -4,7 +4,7 @@
 #define __CLIENT__
 
 #define SERV_ADDR "40:F0:2F:DD:B5:97"     // The address of the server
-#define TEAM_ID 3                       // InSight's team ID
+#define TEAM_ID 4                       // InSight's team ID
 
 extern int s;
 extern uint16_t msgId;

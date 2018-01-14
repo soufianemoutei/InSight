@@ -114,6 +114,12 @@ int rightWheelPosition() {
   return buf;
 }
 
+void correctHeading() {
+  int angle = getHeading() % 180;
+  printf("Correcting the current heading: %d.\n",angle);
+  
+}
+
 void backEngine(int direction) {
   if (engines.backEng == DESC_LIMIT) {
     printf("CANNOT USE BACK ENGINE\n");
@@ -174,7 +180,9 @@ void snake()
     while (!closeToObstacles());
     stopRunning();
 
-    updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+    if (getColorValue() != 5) {
+      updateMapPosition(getSonarValue());
+    }
     printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
     printf("COLOR: %s\n", getColorName(getColorValue()));
 
@@ -182,11 +190,13 @@ void snake()
 
     turn(round*90);
 
-    if(!closeToObstacles()){
+    if (!closeToObstacles()){
       goStraight(500,1);
       ob = 0;
     } else {
-      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+      if (getColorValue() != 5) {
+        updateMapPosition(getSonarValue());
+      }
       printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
       printf("COLOR: %s\n", getColorName(getColorValue()));
       ob++;

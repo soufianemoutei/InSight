@@ -21,12 +21,13 @@ pthread_mutex_t positionMutex;
 State map[MAP_HEIGHT][MAP_WIDTH];
 
 void initPosition(float x, float y) {
-	position = (Position) {x,y,((int) x / 5),((int) y / 5)};
+	position = (Position) {x,y,getNearestInteger(x / 5),getNearestInteger(y / 5)};
 
-	printf("Initializing the position: x = %f, y = %f.\n", x, y);
+	printf("Initializing the position: x = %f, y = %f, x-MAP = %d, y-MAP = %d.\n", x, y, position.ux, position.uy);
 	printf("Initial heading: %d.\n", heading);
 
 	initMap();
+	map[position.uy][position.ux] = VISITED;
 
 	pthread_mutex_init(&positionMutex, NULL);
 
@@ -52,11 +53,19 @@ void getPosition(int16_t* pos) {
 	pthread_mutex_unlock(&positionMutex);
 }
 
+int getHeading() {
+	int angle = 0;
+	pthread_mutex_lock(&positionMutex);
+	angle = heading;
+	pthread_mutex_unlock(&positionMutex);
+	return angle;
+}
+
 void updateMapPosition(int sonarValue) {
 	int16_t x = 0, y = 0;
 	pthread_mutex_lock(&positionMutex);
-	x = (int16_t) ((position.x + (sonarValue / 10) * cos(heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
-	y = (int16_t) ((position.y + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
+	x = (int16_t) getNearestInteger((position.x + (sonarValue / 10) * cos(heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
+	y = (int16_t) getNearestInteger((position.y + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
 	map[y][x] = OBSTACLE;
 	pthread_mutex_unlock(&positionMutex);
 }
@@ -66,6 +75,7 @@ void* update() {
 	int angle, newAngle, angleDiff;
 	int displacement;
 	int leftWheel = 0, rightWheel = 0, leftWheelPrev = 0, rightWheelPrev = 0; // Used to store the values returned by the wheels
+	int newUX, newUY;
 
 	angle = getGyroValue();
 	printf("Angle given by the gyro sensor: %d.\n",angle);
@@ -78,7 +88,7 @@ void* update() {
 			continue;
 		}
 		newAngle = getGyroValue();
-		printf("Angle given by the gyro sensor: %d.\n", newAngle);
+		//printf("Angle given by the gyro sensor: %d.\n", newAngle);
 
 		leftWheel = leftWheelPosition();
 		rightWheel = rightWheelPosition();
@@ -89,37 +99,52 @@ void* update() {
 		pthread_mutex_lock(&positionMutex);
 		heading -=  angleDiff; // Updating the heading
 
-		printf("Updating the heading to %d°.\n", heading);
+		//printf("Updating the heading to %d°.\n", heading);
 
 		position.x += displacement * cos(heading * M_PI / 180); // Trigonometric relations; to update the position
 		position.y += displacement * sin(heading * M_PI / 180);
-		printf("Updating the position to: (x = %f, y = %f).\n", position.x, position.y);
-		if ((((int) (position.x / 5)) != position.ux) || (((int) (position.y / 5)) != position.y)) { // Check if the robot changes the square (on the map)
-			for (int y = position.uy + 1; y <= ((int) (position.y / 5)); y++) {
-				for (int x = position.ux + 1; x <= ((int) (position.x / 5)); x++) {
-					if (map[y][x] == NOT_VISITED) { // Update the position on the map only if it's never visited
-					printf("Updating the position on the map to: (x = %d, y = %d).\n", x, y);
-					map[y][x] = VISITED;
+		newUX = getNearestInteger(position.x / 5);
+		newUY = getNearestInteger(position.y / 5);
+		//printf("Updating the position to: (x = %f, y = %f).\n", position.x, position.y);
+		printf("newUX = %d, position.ux = %d, newUY = %d, position.uy = %d\n",newUX,position.ux,newUY,position.uy);
+		if (!(newUX == position.ux && newUY == position.uy)) {
+			// Check if the robot changes the square (on the map)
+			/*
+			for (int y = position.uy + 1; y <= newUY; y++) {
+				for (int x = position.ux + 1; x <= newUX; x++) {
+					if (map[y][x] == NOT_VISITED) {
+						// Update the position on the map only if it's never visited
+						printf("Updating the position on the map to: (x = %d, y = %d).\n", x, y);
+						map[y][x] = VISITED;
 					}
 				}
+			}*/
+			position.ux = newUX;
+			position.uy = newUY;
+			send_position(position.ux,position.uy); // Send the position to the server
+			if (map[position.uy][position.ux] == NOT_VISITED) {
+				// Update the position on the map only if it's never visited
+				printf("Updating the position on the map to: (x = %d, y = %d).\n", position.ux, position.uy);
+				map[position.uy][position.ux] = VISITED;
 			}
-		position.ux = (int) (position.x / 5);
-		position.uy = (int) (position.y / 5);
-		send_position(position.ux,position.uy); // Send the position to the server
 		}
-	pthread_mutex_unlock(&positionMutex);
+		pthread_mutex_unlock(&positionMutex);
 
-	angle = newAngle;
-	leftWheelPrev = leftWheel;
-	rightWheelPrev = rightWheel;
+		angle = newAngle;
+		leftWheelPrev = leftWheel;
+		rightWheelPrev = rightWheel;
 	}
 
 }
 
 void freePosition() {
 	updating = 0;
-	if (pthread_join(updateThread, NULL)) {
-		perror("Failed to close the update thread");
-		exit(EXIT_FAILURE);
-	}
+	/*if (pthread_join(updateThread, NULL)) {
+	perror("Failed to close the update thread");
+	exit(EXIT_FAILURE);
+}*/
+}
+
+int getNearestInteger(float f) {
+	return ((int) round(f));
 }

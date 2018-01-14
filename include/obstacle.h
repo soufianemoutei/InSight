@@ -1,7 +1,7 @@
 #ifndef __OBSTACLE__
 #define __OBSTACLE__
 
-#define DISTANCE_FROM_OBSTACLE 400
+#define DISTANCE_FROM_OBSTACLE 120
 
 char closeToObstacles();
 //char farObstacle();

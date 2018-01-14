@@ -165,8 +165,8 @@ void send_map() {
   printf ("Sending the map to the server...\n");
   for (int y = 0; y < MAP_HEIGHT; y++) {
     for (int x = 0; x < MAP_WIDTH; x++) {
-      if (map[x][y] != NOT_VISITED) {
-        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[x][y] == NOT_VISITED ? "NOT VISITED" : (map[x][y] == VISITED ? "VISITED" : "OBSTACLE")));
+      if (map[y][x] != NOT_VISITED) {
+        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == VISITED ? "VISITED" : "OBSTACLE"));
       }
       *((uint16_t *) string) = msgId++; // ID
       string[2] = TEAM_ID; // Source
@@ -180,11 +180,11 @@ void send_map() {
         string[9] = 255;
         string[10] = 0;
         string[11] = 0;
-      } else if (map[x][y] == OBSTACLE) { // Indicate the obstacle position with a blue square
+      } else if (map[y][x] == OBSTACLE) { // Indicate the obstacle position with a blue square
         string[9] = 0;
         string[10] = 0;
         string[11] = 255;
-      } else if (map[x][y] == VISITED) { // Indicate the visited position with a green square
+      } else if (map[y][x] == VISITED) { // Indicate the visited position with a green square
         string[9] = 0;
         string[10] = 255;
         string[11] = 0;
@@ -194,7 +194,7 @@ void send_map() {
         string[11] = 255;
       }
       write(s, string, 12);
-      Sleep(100);
+      Sleep(10);
     }
   }
   send_done(); // The map is finished
