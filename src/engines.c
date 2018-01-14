@@ -28,8 +28,8 @@ void initEng()
     multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_BRAKE);
     multi_set_tacho_position_sp(engines.wheelEng.both, 0);
     multi_set_tacho_position(engines.wheelEng.both, 0);
-    multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 100);  // 0.1 second to reach the full speed
-    multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 100);// 0.1 is the acceleration and decceleration time
+    multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 1000);  // 0.1 second to reach the full speed
+    multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 1000);// 0.1 is the acceleration and decceleration time
   } else {
     exploring = 0;
     printf("Wheels' engines were NOT found!\n");
@@ -48,8 +48,8 @@ void initEng()
   if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
     printf("FRONT engine were found!\n");
     //set_tacho_stop_action_inx(engines.frontEng, TACHO_RESET);
-    set_tacho_ramp_up_sp(engines.frontEng, 1000 );  // 0.1 second to reach the full speed
-    set_tacho_ramp_down_sp(engines.frontEng, 1000 );// 0.1 is the acceleration and decceleration time
+    set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
   } else {
     exploring = 0;
     printf("FRONT engine were NOT found\n");
@@ -57,7 +57,7 @@ void initEng()
 }
 
 void goStraight(int time, int direction) {
-  int angleInit = getGyroValue(), angle, error, timeInit;
+  int angleInit = getGyroValue(), error, timeInit;
 
   multi_set_tacho_speed_sp(engines.wheelEng.both, direction*SPEED_LINEAR/(direction == -1 ? 2 : 1));
   if (!time) {
@@ -69,21 +69,17 @@ void goStraight(int time, int direction) {
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
 
     // To control the error
-    while (clock() / CLOCKS_PER_SEC - timeInit < time && isRunning()) {
-      angle = getGyroValue();
-      error = angle - angleInit;
-      if (abs(error) > 20) {
-	stopRunning();
-        set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-error));
-        set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(error));
-        multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
-        Sleep(300);
-        multi_set_tacho_time_sp(engines.wheelEng.both, time - clock() / CLOCKS_PER_SEC + timeInit);
-        multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
-      }
-    }
+    /*    while (clock() / CLOCKS_PER_SEC - timeInit < time && isRunning() && !closeToObstacles()) ;
+
+    error = getGyroValue() - angleInit;
+    if (abs(error) > 20) {
+    printf("AN ERROR OCCURED WHILE RUNNING: %d degrees\n",error);
+    stopRunning();
+    turn(-error);
   }
-  sleep(1);
+  */
+}
+Sleep(200);
 }
 
 void stopRunning() {
@@ -106,9 +102,7 @@ void turn(int degree){
   set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(degree));
   multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
 
-  // To control the error
-  error = getGyroValue() - degree;
-  sleep(1);
+  Sleep(700);
 }
 
 int leftWheelPosition() {
@@ -135,14 +129,15 @@ void backEngine(int direction) {
 }
 
 void turnSonar(int angle) {
+  int d = 300; //240
   set_tacho_speed_sp(engines.frontEng, (angle < 0 ? -1 : 1) * SPEED_FRONT_ENGINE);
-  if(angle<0){angle=-angle;}
   if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   } else {
-    int d = 240;
-    d = 300;
-    if (angle==180){d=2*d;}
+    if (abs(angle)==180){
+      d=2*d;
+    }
+
     set_tacho_time_sp(engines.frontEng,d);//DEGREE_TO_TIME_FE(angle));
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
     Sleep(1500);
@@ -152,14 +147,20 @@ void turnSonar(int angle) {
 
 void explore(){
   int i = 0;
-initPosition(40.0, 10.0);
-  while(exploring){
-goStraight(2000,1);
-if (i%4 == 3 && !closeToObstacles()) { sleep(1);}
-if (closeToObstacles() || i%4 == 3) {
-BasicReaction();
-}
-    i++;
-	}
-}
+  initPosition(STARTING_POSITION_X*5, STARTING_POSITION_Y*5);
 
+  while (exploring && i < 50) {
+    goStraight(2000,1);
+    if (i%4 == 3 && !closeToObstacles()) {
+      Sleep(1500);
+    }
+    if (closeToObstacles() || i%4 == 3) {
+      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+      BasicReaction();
+    }
+    i++;
+  }
+  freePosition();
+  exploring = 0;
+  send_map();
+}

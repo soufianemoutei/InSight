@@ -45,14 +45,6 @@ void initSensors() {
     Sleep(200);
   }
 
-  if (!ev3_search_sensor(HT_NXT_COMPASS, &(sensors.compassSensor),0)) {
-    sensors.compassSensor = DESC_LIMIT;
-    printf("WARNING: Compass sensor was NOT found!\n");
-  } else {
-    printf("Compass sensor was found!\n");
-    set_sensor_mode(sensors.compassSensor,"COMPASS");
-    Sleep(200);
-  }
 }
 
 int getSonarValue() {
@@ -87,15 +79,5 @@ int getGyroValue() {
     return 0;
   }
   get_sensor_value(0, sensors.gyroSensor,&angle);
-  return angle;
-}
-
-int getCompassValue() {
-  int angle;
-  if (sensors.compassSensor == DESC_LIMIT) {
-    printf("CANNOT USE COMPASS SENSOR\n");
-    return 0;
-  }
-  get_sensor_value(0, sensors.compassSensor,&angle);
   return angle;
 }

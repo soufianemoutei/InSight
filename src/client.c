@@ -44,56 +44,58 @@ void initClient() {
 }
 
 void closeClient() {
-  receiving = 0;
-  exploring = 0;
-  if (updating != 0) {
+  receiving = 0; // Stop receiving
+  exploring = 0; // Stop exploring
+  if (updating != 0) { // Stop updating the position
     freePosition();
   }
-  stopRunning();
-  close(s);
+  stopRunning(); // Stop running
+  close(s); // Close the socket
 }
 
 void receive() {
   char string[58];
 
-  int bytes_read = read(s, string, 9);
+  int bytes_read = read(s, string, 58);
 
   if (bytes_read <= 0) {
     fprintf (stderr, "Server unexpectedly closed connection...\n");
-    close (s);
+    closeClient();
     exit (EXIT_FAILURE);
   }
 
   printf("Received %d bytes\n", bytes_read);
-  send_ack(*((uint16_t *) string), string[2]);
+
+  if (string[2] != 0xFF) {
+    send_ack(*((uint16_t *) string), string[2]);
+  }
 
   switch (string[4]) {
     case MSG_ACK:
-    printf("ACK Message\n");
-    printf("STATE:%s\n",(string[7] == 0 ? "OK" : "Error"));
+    printf("ACK Message was received; State:%s\n",(string[7] == 0 ? "OK" : "Error"));
     break;
 
     case MSG_START:
-    printf("START Message\n");
-    sending = 1;
-    explore();
+    printf("START Message was received.\n");
+    sending = 1; // It means we allow the robot to send messages to the server
+    explore(); // Explore the map
     break;
 
     case MSG_STOP:
-    printf("STOP Message\n");
+    printf("STOP Message was received.\n");
     closeClient();
     break;
 
     case MSG_KICK:
-    printf("The robot %d was kicked\n",string[5]);
+    printf("The robot %d was kicked.\n",string[5]);
     break;
 
     case MSG_CUSTOM:
-    printf("MSG:%s\n",string);
+    printf("CUSTOM Message was received from %d: %s\n",string[2],(string+5));
     break;
 
     default:
-    printf("ERROR, MESSAGE SENT WAS: %s",string);
+    printf("ERROR: THE TYPE OF THE RECEIVED MESSAGE IS UNKNOWN.\n");
     break;
 
   }
@@ -104,14 +106,14 @@ void send_ack(uint16_t msgID, char dst) {
   if (!sending) {
     return ;
   }
-  printf("SENDING ACK MESSAGE TO %d\n",dst);
-  *((uint16_t *) string) = msgId++;
-  string[2] = TEAM_ID;
-  string[3] = dst;
+  printf("Sending ACK Message to %d.\n",dst);
+  *((uint16_t *) string) = msgId++; // ID
+  string[2] = TEAM_ID; // Source
+  string[3] = dst; // Destination
   string[4] = MSG_ACK;
-  string[5] = (uint8_t) msgID;
+  string[5] = (uint8_t) msgID; // The ID of the message that is acknowledged
   string[6] = (uint8_t) (msgID >> 8);
-  string[7] = 0;
+  string[7] = 0; // Status
   write(s, string, 8);
 }
 
@@ -120,15 +122,15 @@ void send_obstacle(int16_t x, int16_t y) {
   if (!sending) {
     return ;
   }
-  printf("SENDING OBSTACLE MESSAGE (%d,%d) TO THE SERVER\n",x,y);
-  *((uint16_t *) string) = msgId++;
-  string[2] = TEAM_ID;
-  string[3] = 0xFF;
+  printf("Sending OBSTACLE Message (%d,%d) to the server.\n",x,y);
+  *((uint16_t *) string) = msgId++; // ID
+  string[2] = TEAM_ID; // Source
+  string[3] = 0xFF; // Destination = Server
   string[4] = MSG_OBSTACLE;
-  string[5] = 0;
-  string[6] = (uint8_t) x;
+  string[5] = 0; // Indicate that the robot released the object
+  string[6] = (uint8_t) x; // The x-position of the obstacle
   string[7] = (uint8_t) (x >> 8);
-  string[8] = (uint8_t) y;
+  string[8] = (uint8_t) y; // The y-position of the obstacle
   string[9]= (uint8_t) (y >> 8);
   write(s, string, 10);
 }
@@ -138,14 +140,19 @@ void send_position(int16_t x, int16_t y) {
   if (!sending) {
     return ;
   }
-  printf("SENDING POSITION (%d,%d) TO THE SERVER\n",x,y);
-  *((uint16_t *) string) = msgId++;
-  string[2] = TEAM_ID;
-  string[3] = 0xFF;
+  if (x < 0 || x > 80 || y < 0 || y > 80) {
+    stopRunning();
+    freePosition();
+    exploring = 0;
+  }
+  printf("Sending the position (%d,%d) to the server.\n",x,y);
+  *((uint16_t *) string) = msgId++; // ID
+  string[2] = TEAM_ID; // Source
+  string[3] = 0xFF; // Destination = Server
   string[4] = MSG_POSITION;
-  string[5] = (uint8_t) x;
+  string[5] = (uint8_t) x; // The x-position of the robot
   string[6] = (uint8_t) (x >> 8);
-  string[7] = (uint8_t) y;
+  string[7] = (uint8_t) y; // The y-position of the robot
   string[8]= (uint8_t) (y >> 8);
   write(s, string, 9);
 }
@@ -155,35 +162,50 @@ void send_map() {
   if (!sending) {
     return ;
   }
-  printf ("SENDING THE MAP...\n");
-  for (int y; y < MAP_HEIGHT; y++) {
-    for (int x; x < MAP_WIDTH; x++) {
-      *((uint16_t *) string) = msgId++;
-      string[2] = TEAM_ID;
-      string[3] = 0xFF;
+  printf ("Sending the map to the server...\n");
+  for (int y = 0; y < MAP_HEIGHT; y++) {
+    for (int x = 0; x < MAP_WIDTH; x++) {
+      if (map[x][y] != NOT_VISITED) {
+        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[x][y] == NOT_VISITED ? "NOT VISITED" : (map[x][y] == VISITED ? "VISITED" : "OBSTACLE")));
+      }
+      *((uint16_t *) string) = msgId++; // ID
+      string[2] = TEAM_ID; // Source
+      string[3] = 0xFF; // Destination = Server
       string[4] = MSG_MAPDATA;
-      string[5] = (uint8_t) x;
+      string[5] = (uint8_t) x; // The x-position of the map
       string[6] = (uint8_t) (x >> 8);
-      string[7] = (uint8_t) y;
+      string[7] = (uint8_t) y; // The y-position of the map
       string[8]= (uint8_t) (y >> 8);
-      string[9]= 0;
-      string[10] = ((map[x][y] == OBSTACLE) ? 0 : 254);
-      string[11] = 0;
+      if (x == STARTING_POSITION_X && y == STARTING_POSITION_Y) { // Indicate the starting position with a red square
+        string[9] = 255;
+        string[10] = 0;
+        string[11] = 0;
+      } else if (map[x][y] == OBSTACLE) { // Indicate the obstacle position with a blue square
+        string[9] = 0;
+        string[10] = 0;
+        string[11] = 255;
+      } else if (map[x][y] == VISITED) { // Indicate the visited position with a green square
+        string[9] = 0;
+        string[10] = 255;
+        string[11] = 0;
+      } else { // Indicate the non-visited position with a white square
+        string[9] = 255;
+        string[10] = 255;
+        string[11] = 255;
+      }
       write(s, string, 12);
+      Sleep(100);
     }
   }
-  send_done();
+  send_done(); // The map is finished
 }
 
 void send_done() {
   char string[5];
-  if (!sending) {
-    return ;
-  }
-  printf("DONE SENDING MAP");
-  *((uint16_t *) string) = msgId++;
-  string[2] = TEAM_ID;
-  string[3] = 0xFF;
+  printf("The map is finished.\n");
+  *((uint16_t *) string) = msgId++; // ID
+  string[2] = TEAM_ID; // Source
+  string[3] = 0xFF; // Destination = Server
   string[4] = MSG_MAPDONE;
   write(s, string, 5);
 }
