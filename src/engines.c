@@ -282,7 +282,7 @@ void strategy_beta()
         updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
       }
 
-      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s. Consecutive obstacles: %d.\n", getSonarValue(), getColorName(getColorValue()), ob);
+      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s.\n", getSonarValue(), getColorName(getColorValue()));
     }
 
     if (!onTheMap()) {  //for the virtual fence in the big arena
