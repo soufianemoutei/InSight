@@ -38,6 +38,6 @@ void* update(); // The function used with the updating thread. It updates the po
 void freePosition(); // It stops updating and the updating thread as well
 int getNearestInteger(float f);
 char positionOnTheMap(int x, int y);
-char OnTheMap();
+char onTheMap();
 
 #endif

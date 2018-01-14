@@ -155,7 +155,7 @@ char positionOnTheMap(int x, int y) {
 char onTheMap() {
 	char on_the_map = 0;
 	pthread_mutex_lock(&positionMutex);
-	on_the_map = positionInTheMap(position.ux,position.uy);
+	on_the_map = positionOnTheMap(position.ux,position.uy);
 	pthread_mutex_unlock(&positionMutex);
 	return on_the_map;
 }

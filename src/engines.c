@@ -14,6 +14,9 @@
 Engines engines;
 char exploring = 1;
 
+pthread_mutex_t turningMutex;
+pthread_t movingEyesThread;
+
 void initEng()
 {
   printf("Engine initialization...\n");
@@ -49,6 +52,13 @@ void initEng()
     printf("FRONT engine were found!\n");
     set_tacho_ramp_up_sp(engines.frontEng, 100); // 0.1 second to reach the full speed
     set_tacho_ramp_down_sp(engines.frontEng, 100); // 0.1 is the acceleration and decceleration time
+
+    pthread_mutex_init(&turningMutex, NULL);
+    if(pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) {
+      printf("pthread_create");
+      exit(EXIT_FAILURE);
+    }
+
   } else {
     exploring = 0;
     printf("FRONT engine were NOT found\n");
@@ -66,15 +76,6 @@ void goStraight(int time, int direction) {
 
     timeInit = clock() / CLOCKS_PER_SEC;
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
-
-    // To control the error
-    /*    while (clock() / CLOCKS_PER_SEC - timeInit < time && isRunning() && !closeToObstacles()) ;
-
-    error = getGyroValue() - angleInit;
-    if (abs(error) > 20) {
-    printf("AN ERROR OCCURED WHILE RUNNING: %d degrees\n",error);
-    stopRunning();
-    turn(-error);*/
   }
   Sleep(1000);
 }
@@ -116,11 +117,14 @@ int rightWheelPosition() {
 
 void correctHeading() {
   int angle = getHeading() % 90;
-  if (){
-  printf("Correcting the current heading: %d.\n",angle);
+  if ((angle > ERROR && angle <= 45) || (angle > 45 && angle < (90-ERROR))){
+    printf("Correcting the current heading: %d.\n",angle);
   }
-  if(angle>15 && angle=<45){ turn(-angle);}
-  else(angle>45 && angle<75){ turn(90-angle);}
+  if (angle > ERROR && angle <= 45) {
+    turn(-angle);
+  } else if (angle > 45 && angle < (90-ERROR)){
+    turn(90-angle);
+  }
 }
 
 void backEngine(int direction) {
@@ -135,16 +139,11 @@ void backEngine(int direction) {
 }
 
 void turnSonar(int angle) {
-  int d = 300; //240
   set_tacho_speed_sp(engines.frontEng, (angle < 0 ? -1 : 1) * SPEED_FRONT_ENGINE);
   if(!angle){
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   } else {
-    if (abs(angle)==180){
-      d = 2*d;
-    }
-
-    set_tacho_time_sp(engines.frontEng,d);//DEGREE_TO_TIME_FE(angle));
+    set_tacho_time_sp(engines.frontEng,DEGREE_TO_TIME_FE(angle));
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
     Sleep(1500);
   }
@@ -160,16 +159,16 @@ void explore(){
   goStraight(2000,1);
   if (i%4 == 3 && !closeToObstacles()) {
   Sleep(1500);
-  }
-  if (closeToObstacles() || i%4 == 3) {
-  updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
-  BasicReaction();
-  }
-  i++;
-  }*/
+}
+if (closeToObstacles() || i%4 == 3) {
+updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+BasicReaction();
+}
+i++;
+}*/
 
-  freePosition();
-  send_map();
+freePosition();
+send_map();
 }
 
 void snake()
@@ -180,12 +179,15 @@ void snake()
 
   turn(-90);
   while (exploring) {
-    if (i % 4 == 3) {
+    if (i % 2 == 1) {
       correctHeading();
       sleep(1);
     }
     goStraight(10000,1);
-    while (!closeToObstacles() || onTheMap());
+    while (!closeToObstacles() && onTheMap());
+
+    pthread_mutex_lock(&turningMutex);
+
     stopRunning();
 
     if (getColorValue() != 5) {
@@ -217,6 +219,19 @@ void snake()
       turn(round*90);
     }
     round = -round;
+    pthread_mutex_unlock(&turningMutex);
     i++;
+  }
+}
+
+void* move_eyes() {
+  while (exploring) {
+    pthread_mutex_lock(&turningMutex);
+    turnSonar(-15);
+    pthread_mutex_unlock(&turningMutex);
+    Sleep(10);
+    pthread_mutex_lock(&turningMutex);
+    turnSonar(15);
+    pthread_mutex_unlock(&turningMutex);
   }
 }
