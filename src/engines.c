@@ -115,9 +115,12 @@ int rightWheelPosition() {
 }
 
 void correctHeading() {
-  int angle = getHeading() % 180;
+  int angle = getHeading() % 90;
+  if (){
   printf("Correcting the current heading: %d.\n",angle);
-  
+  }
+  if(angle>15 && angle=<45){ turn(-angle);}
+  else(angle>45 && angle<75){ turn(90-angle);}
 }
 
 void backEngine(int direction) {
@@ -169,7 +172,7 @@ void explore(){
   send_map();
 }
 
-void snake()
+void snake(int case)
 {
   int ob = 0; //for checking to consecutive obstacles
   int round = 1;
@@ -177,7 +180,7 @@ void snake()
   turn(-90);
   while (exploring) {
     goStraight(10000,1);
-    while (!closeToObstacles());
+    while (!closeToObstacles() || onTheMap());
     stopRunning();
 
     if (getColorValue() != 5) {
@@ -204,10 +207,10 @@ void snake()
 
     turn(round*90);
 
-    if (ob < 2){
-      round = -round;
-    } else {
+    if (ob>=2){
       printf("LIMIT REACHED, OB = %d.\n",ob);
+      turn(round*90);
     }
+    round = -round;
   }
 }
