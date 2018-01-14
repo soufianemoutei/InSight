@@ -66,6 +66,11 @@ void updateMapPosition(int sonarValue) {
 	pthread_mutex_lock(&positionMutex);
 	x = (int16_t) getNearestInteger((position.x + (sonarValue / 10) * cos(heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
 	y = (int16_t) getNearestInteger((position.y + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
+	if (!positionOnTheMap(x,y)) {
+		printf("ERROR: The position of the obstacle is not on the map.\n");
+		pthread_mutex_unlock(&positionMutex);
+		return ;
+	}
 	map[y][x] = OBSTACLE;
 	pthread_mutex_unlock(&positionMutex);
 }
@@ -106,26 +111,20 @@ void* update() {
 		newUX = getNearestInteger(position.x / 5);
 		newUY = getNearestInteger(position.y / 5);
 		//printf("Updating the position to: (x = %f, y = %f).\n", position.x, position.y);
-		printf("newUX = %d, position.ux = %d, newUY = %d, position.uy = %d\n",newUX,position.ux,newUY,position.uy);
+		//printf("newUX = %d, position.ux = %d, newUY = %d, position.uy = %d\n",newUX,position.ux,newUY,position.uy);
 		if (!(newUX == position.ux && newUY == position.uy)) {
 			// Check if the robot changes the square (on the map)
-			/*
-			for (int y = position.uy + 1; y <= newUY; y++) {
-				for (int x = position.ux + 1; x <= newUX; x++) {
-					if (map[y][x] == NOT_VISITED) {
-						// Update the position on the map only if it's never visited
-						printf("Updating the position on the map to: (x = %d, y = %d).\n", x, y);
-						map[y][x] = VISITED;
-					}
-				}
-			}*/
 			position.ux = newUX;
 			position.uy = newUY;
-			send_position(position.ux,position.uy); // Send the position to the server
-			if (map[position.uy][position.ux] == NOT_VISITED) {
-				// Update the position on the map only if it's never visited
-				printf("Updating the position on the map to: (x = %d, y = %d).\n", position.ux, position.uy);
-				map[position.uy][position.ux] = VISITED;
+			if (positionOnTheMap(position.ux,position.uy)) {
+				send_position(position.ux,position.uy); // Send the position to the server
+				if (map[position.uy][position.ux] == NOT_VISITED) {
+					// Update the position on the map only if it's never visited
+					printf("Updating the position of the robot on the map to: (x = %d, y = %d).\n", position.ux, position.uy);
+					map[position.uy][position.ux] = VISITED;
+				}
+			} else {
+				printf("WARNING: the robot is no longer on the map: (%d,%d).\n",position.ux,position.uy);
 			}
 		}
 		pthread_mutex_unlock(&positionMutex);
@@ -147,4 +146,16 @@ void freePosition() {
 
 int getNearestInteger(float f) {
 	return ((int) round(f));
+}
+
+char positionOnTheMap(int x, int y) {
+	return (x >= 0 && x <= MAP_WIDTH && y >= 0 && y <= MAP_HEIGHT);
+}
+
+char onTheMap() {
+	char on_the_map = 0;
+	pthread_mutex_lock(&positionMutex);
+	on_the_map = positionInTheMap(position.ux,position.uy);
+	pthread_mutex_unlock(&positionMutex);
+	return on_the_map;
 }

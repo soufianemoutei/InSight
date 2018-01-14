@@ -140,11 +140,6 @@ void send_position(int16_t x, int16_t y) {
   if (!sending) {
     return ;
   }
-  if (x < 0 || x > 80 || y < 0 || y > 80) {
-    stopRunning();
-    freePosition();
-    exploring = 0;
-  }
   printf("Sending the position (%d,%d) to the server.\n",x,y);
   *((uint16_t *) string) = msgId++; // ID
   string[2] = TEAM_ID; // Source
