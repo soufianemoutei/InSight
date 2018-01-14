@@ -43,5 +43,5 @@ int rightWheelPosition();
 void backEngine(int direction);
 void explore();
 void turnSonar(int angle);
-
+void snake();
 #endif
