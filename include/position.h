@@ -4,8 +4,8 @@
 #ifndef __POSITION__
 #define __POSITION__
 
-#define MAP_HEIGHT 80 // The map height
-#define MAP_WIDTH 80 // The map width
+#define MAP_HEIGHT 80 // The map height (40 for small arena)
+#define MAP_WIDTH 80 // The map width (24 for small arena)
 #define STARTING_POSITION_X 8 // The X of the starting position
 #define STARTING_POSITION_Y 2 // The Y of the starting position
 

@@ -28,8 +28,8 @@ void initEng()
     multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_BRAKE);
     multi_set_tacho_position_sp(engines.wheelEng.both, 0);
     multi_set_tacho_position(engines.wheelEng.both, 0);
-    multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 1000);  // 0.1 second to reach the full speed
-    multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 1000);// 0.1 is the acceleration and decceleration time
+    multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 1000);  // 1 second to reach the full speed
+    multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 500);// 0.5 is the decceleration time
   } else {
     exploring = 0;
     printf("Wheels' engines were NOT found!\n");
@@ -38,8 +38,8 @@ void initEng()
   if (ev3_search_tacho_plugged_in(BACK_PORT,0,&engines.backEng,0)) {
     printf("BACK engine were found!\n");
     set_tacho_stop_action_inx(engines.backEng, TACHO_RESET);
-    set_tacho_ramp_up_sp(engines.backEng, 100 );  // 0.1 second to reach the full speed
-    set_tacho_ramp_down_sp(engines.backEng, 100 );// 0.1 is the acceleration and decceleration time
+    set_tacho_ramp_up_sp(engines.backEng, 100);  // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.backEng, 100);// 0.1 is the decceleration time
   } else {
     engines.backEng = DESC_LIMIT;
     printf("BACK engine were NOT found\n");
@@ -47,9 +47,8 @@ void initEng()
 
   if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
     printf("FRONT engine were found!\n");
-    //set_tacho_stop_action_inx(engines.frontEng, TACHO_RESET);
-    set_tacho_ramp_up_sp(engines.frontEng, 100 );  // 0.1 second to reach the full speed
-    set_tacho_ramp_down_sp(engines.frontEng, 100 );// 0.1 is the acceleration and decceleration time
+    set_tacho_ramp_up_sp(engines.frontEng, 100); // 0.1 second to reach the full speed
+    set_tacho_ramp_down_sp(engines.frontEng, 100); // 0.1 is the acceleration and decceleration time
   } else {
     exploring = 0;
     printf("FRONT engine were NOT found\n");
@@ -75,11 +74,9 @@ void goStraight(int time, int direction) {
     if (abs(error) > 20) {
     printf("AN ERROR OCCURED WHILE RUNNING: %d degrees\n",error);
     stopRunning();
-    turn(-error);
+    turn(-error);*/
   }
-  */
-}
-Sleep(200);
+  Sleep(1000);
 }
 
 void stopRunning() {
@@ -102,7 +99,7 @@ void turn(int degree){
   set_tacho_position_sp(engines.wheelEng.right, DEGREE_TO_COUNT(degree));
   multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
 
-  Sleep(700);
+  Sleep(1500);
 }
 
 int leftWheelPosition() {
@@ -135,7 +132,7 @@ void turnSonar(int angle) {
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   } else {
     if (abs(angle)==180){
-      d=2*d;
+      d = 2*d;
     }
 
     set_tacho_time_sp(engines.frontEng,d);//DEGREE_TO_TIME_FE(angle));
@@ -149,19 +146,20 @@ void explore(){
   int i = 0;
   initPosition(STARTING_POSITION_X*5, STARTING_POSITION_Y*5);
 
-  while (exploring && i < 50) {
-    goStraight(2000,1);
-    if (i%4 == 3 && !closeToObstacles()) {
-      Sleep(1500);
-    }
-    if (closeToObstacles() || i%4 == 3) {
-      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
-      BasicReaction();
-    }
-    i++;
+  snake();
+  /*while (exploring && i < 50) {
+  goStraight(2000,1);
+  if (i%4 == 3 && !closeToObstacles()) {
+  Sleep(1500);
   }
+  if (closeToObstacles() || i%4 == 3) {
+  updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+  BasicReaction();
+  }
+  i++;
+  }*/
+
   freePosition();
-  exploring = 0;
   send_map();
 }
 
@@ -169,24 +167,37 @@ void snake()
 {
   int ob = 0; //for checking to consecutive obstacles
   int round = 1;
+
   turn(-90);
-  while(1){
+  while (exploring) {
     goStraight(10000,1);
-    while(!closeToObstacles());
+    while (!closeToObstacles());
     stopRunning();
-    goStraight(750,-1);
-	  sleep(1);
+
+    updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+    printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
+    printf("COLOR: %s\n", getColorName(getColorValue()));
+
+    goStraight((ob >= 2 ? 750 : 500),-1);
+
     turn(round*90);
-	  sleep(1);
+
     if(!closeToObstacles()){
-        goStraight(500,1);
-	      sleep(1);
-        ob = 0;
-     }else{ob++;}
-      turn(round*90);
-	  sleep(1);
-    if(ob <2){
-    round = -round;
-    }else{printf("LIMIT REACHED\n");}
+      goStraight(500,1);
+      ob = 0;
+    } else {
+      updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
+      printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
+      printf("COLOR: %s\n", getColorName(getColorValue()));
+      ob++;
+    }
+
+    turn(round*90);
+
+    if (ob < 2){
+      round = -round;
+    } else {
+      printf("LIMIT REACHED, OB = %d.\n",ob);
+    }
   }
 }
