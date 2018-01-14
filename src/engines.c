@@ -13,9 +13,12 @@
 
 Engines engines;
 char exploring = 1;
+int directionOfSonarSensor = 1;
 
 pthread_mutex_t turningMutex;
 pthread_t movingEyesThread;
+
+// The documentation of some tacho functions: http://in4lio.github.io/ev3dev-c/group__ev3__tacho.html
 
 void initEng()
 {
@@ -23,23 +26,31 @@ void initEng()
 
   while (ev3_tacho_init() < 1) sleep(1);
 
+  // Initializing the wheels' engines
   if (ev3_search_tacho_plugged_in(RIGHT_PORT,0,&(engines.wheelEng.right),0) && ev3_search_tacho_plugged_in(LEFT_PORT,0,&(engines.wheelEng.left),0)) {
     printf("Wheels' engines were found!\n");
+
     engines.wheelEng.both[0] = engines.wheelEng.right;
     engines.wheelEng.both[1] = engines.wheelEng.left;
     engines.wheelEng.both[2] = DESC_LIMIT;
+
     multi_set_tacho_stop_action_inx(engines.wheelEng.both, TACHO_BRAKE);
     multi_set_tacho_position_sp(engines.wheelEng.both, 0);
     multi_set_tacho_position(engines.wheelEng.both, 0);
     multi_set_tacho_ramp_up_sp(engines.wheelEng.both, 1000);  // 1 second to reach the full speed
     multi_set_tacho_ramp_down_sp(engines.wheelEng.both, 500);// 0.5 is the decceleration time
   } else {
-    exploring = 0;
+    exploring = 0; // if (exploring = 0), the robot won't explore the arena.
+    engines.wheelEng.both[0] = DESC_LIMIT;
+    engines.wheelEng.both[1] = DESC_LIMIT;
+    engines.wheelEng.both[2] = DESC_LIMIT;
     printf("Wheels' engines were NOT found!\n");
   }
 
+  // Initializing the back engine
   if (ev3_search_tacho_plugged_in(BACK_PORT,0,&engines.backEng,0)) {
     printf("BACK engine were found!\n");
+
     set_tacho_stop_action_inx(engines.backEng, TACHO_RESET);
     set_tacho_ramp_up_sp(engines.backEng, 100);  // 0.1 second to reach the full speed
     set_tacho_ramp_down_sp(engines.backEng, 100);// 0.1 is the decceleration time
@@ -48,52 +59,41 @@ void initEng()
     printf("BACK engine were NOT found\n");
   }
 
+  // Initializing the front engine
   if (ev3_search_tacho_plugged_in(FRONT_PORT,0,&engines.frontEng,0)) {
     printf("FRONT engine were found!\n");
+
     set_tacho_ramp_up_sp(engines.frontEng, 100); // 0.1 second to reach the full speed
-    set_tacho_ramp_down_sp(engines.frontEng, 100); // 0.1 is the acceleration and decceleration time
+    set_tacho_ramp_down_sp(engines.frontEng, 100); // 0.1 is the decceleration time
 
     pthread_mutex_init(&turningMutex, NULL);
-    if(pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) {
+    if (pthread_create(&movingEyesThread, NULL, move_eyes, NULL) == -1) { // Start the thread using ‘move_eyes’ function
       printf("pthread_create");
       exit(EXIT_FAILURE);
     }
 
   } else {
-    exploring = 0;
+    engines.frontEng = DESC_LIMIT;
     printf("FRONT engine were NOT found\n");
   }
 }
 
+/* BEGIN: The wheels' engines functions */
 void goStraight(int time, int direction) {
-  int angleInit = getGyroValue(), error, timeInit;
+  multi_set_tacho_speed_sp(engines.wheelEng.both, direction*SPEED_LINEAR/(direction == -1 ? 2 : 1)); // Use half of SPEED_LINEAR if the robot will run backward.
 
-  multi_set_tacho_speed_sp(engines.wheelEng.both, direction*SPEED_LINEAR/(direction == -1 ? 2 : 1));
   if (!time) {
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_FOREVER);
   } else {
     multi_set_tacho_time_sp(engines.wheelEng.both, time);
-
-    timeInit = clock() / CLOCKS_PER_SEC;
     multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_RUN_TIMED);
   }
+
   Sleep(1000);
 }
 
-void stopRunning() {
-  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_STOP);
-}
-
-int isRunning() {
-  FLAGS_T flagsL, flagsR;
-  get_tacho_state_flags(engines.wheelEng.left,&flagsL);
-  get_tacho_state_flags(engines.wheelEng.right,&flagsR);
-  return (flagsL != TACHO_STATE__NONE_ && flagsR != TACHO_STATE__NONE_);
-  //return (flags == TACHO_RUNNING);
-}
-
 void turn(int degree){
-  printf("TURNING BY %d degrees\n", degree);
+  printf("Turning by %d° degrees.\n", degree);
 
   multi_set_tacho_speed_sp(engines.wheelEng.both, SPEED_CIRCULAR);
   set_tacho_position_sp(engines.wheelEng.left, DEGREE_TO_COUNT(-degree));
@@ -101,6 +101,18 @@ void turn(int degree){
   multi_set_tacho_command_inx( engines.wheelEng.both, TACHO_RUN_TO_REL_POS);
 
   Sleep(1500);
+}
+
+void stopRunning() {
+  multi_set_tacho_command_inx(engines.wheelEng.both, TACHO_STOP);
+}
+
+char isRunning() {
+  FLAGS_T flagsL, flagsR;
+  get_tacho_state_flags(engines.wheelEng.left,&flagsL);
+  get_tacho_state_flags(engines.wheelEng.right,&flagsR);
+  return (flagsL != TACHO_STATE__NONE_ && flagsR != TACHO_STATE__NONE_);
+  //return (flags == TACHO_RUNNING);
 }
 
 int leftWheelPosition() {
@@ -117,121 +129,171 @@ int rightWheelPosition() {
 
 void correctHeading() {
   int angle = getHeading() % 90;
-  if ((angle > ERROR && angle <= 45) || (angle > 45 && angle < (90-ERROR))){
-    printf("Correcting the current heading: %d.\n",angle);
-  }
+
   if (angle > ERROR && angle <= 45) {
+    printf("Correcting the current heading %d° by turning %d°.\n",angle,-angle);
     turn(-angle);
   } else if (angle > 45 && angle < (90-ERROR)){
+    printf("Correcting the current heading %d° by turning %d°.\n",angle,90-angle);
     turn(90-angle);
   }
+
+  Sleep(1000);
 }
 
+/* END: The wheels' engines functions */
+
+/* BEGIN: The back engine functions */
 void backEngine(int direction) {
   if (engines.backEng == DESC_LIMIT) {
-    printf("CANNOT USE BACK ENGINE\n");
+    printf("ERROR: CANNOT USE BACK ENGINE!\n");
     return ;
   }
+
   set_tacho_speed_sp(engines.backEng, direction * SPEED_BACK_ENGINE);
   set_tacho_time_sp(engines.backEng, 1000);
   set_tacho_command_inx(engines.backEng, TACHO_RUN_TIMED);
-  sleep(2);
-}
 
+  Sleep(2000);
+}
+/* END: The back engine functions */
+
+/* BEGIN: The front engine functions */
 void turnSonar(int angle) {
+  if (engines.frontEng == DESC_LIMIT) {
+    printf("ERROR: CANNOT USE FRONT ENGINE!\n");
+    return ;
+  }
+
   set_tacho_speed_sp(engines.frontEng, (angle < 0 ? -1 : 1) * SPEED_FRONT_ENGINE);
-  if(!angle){
+
+  if (!angle) {
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_FOREVER);
   } else {
     set_tacho_time_sp(engines.frontEng,DEGREE_TO_TIME_FE(angle));
     set_tacho_command_inx(engines.frontEng, TACHO_RUN_TIMED);
-    Sleep(1500);
-  }
-}
-
-
-void explore(){
-  int i = 0;
-  initPosition(STARTING_POSITION_X*5, STARTING_POSITION_Y*5);
-
-  snake();
-  /*while (exploring && i < 50) {
-  goStraight(2000,1);
-  if (i%4 == 3 && !closeToObstacles()) {
-  Sleep(1500);
-}
-if (closeToObstacles() || i%4 == 3) {
-updateMapPosition(getSonarValue(), (getColorValue() == 5 ? VISITED : OBSTACLE));
-BasicReaction();
-}
-i++;
-}*/
-
-freePosition();
-send_map();
-}
-
-void snake()
-{
-  int ob = 0; //for checking to consecutive obstacles
-  int round = 1;
-  int i = 0;
-
-  turn(-90);
-  while (exploring) {
-    if (i % 2 == 1) {
-      correctHeading();
-      sleep(1);
-    }
-    goStraight(10000,1);
-    while (!closeToObstacles() && onTheMap());
-
-    pthread_mutex_lock(&turningMutex);
-
-    stopRunning();
-
-    if (getColorValue() != 5) {
-      updateMapPosition(getSonarValue());
-    }
-    printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
-    printf("COLOR: %s\n", getColorName(getColorValue()));
-
-    goStraight((ob >= 2 ? 750 : 500),-1);
-
-    turn(round*90);
-
-    if (!closeToObstacles()){
-      goStraight(500,1);
-      ob = 0;
-    } else {
-      if (getColorValue() != 5) {
-        updateMapPosition(getSonarValue());
-      }
-      printf("An obstacle was found! The distance from this obstacle is: %dmm. OB = %d.\n", getSonarValue(), ob);
-      printf("COLOR: %s\n", getColorName(getColorValue()));
-      ob++;
-    }
-
-    turn(round*90);
-
-    if (ob>=2){
-      printf("LIMIT REACHED, OB = %d.\n",ob);
-      turn(round*90);
-    }
-    round = -round;
-    pthread_mutex_unlock(&turningMutex);
-    i++;
+    Sleep(1000);
   }
 }
 
 void* move_eyes() {
   while (exploring) {
     pthread_mutex_lock(&turningMutex);
-    turnSonar(-15);
+    turnSonar(directionOfSonarSensor * ANGLE_THREAD_SONAR);
+    turnSonar(-directionOfSonarSensor * ANGLE_THREAD_SONAR);
+    directionOfSonarSensor = -1;
     pthread_mutex_unlock(&turningMutex);
     Sleep(10);
-    pthread_mutex_lock(&turningMutex);
-    turnSonar(15);
-    pthread_mutex_unlock(&turningMutex);
   }
 }
+/* END: The front engine functions */
+
+/* BEGIN: The exploring functions */
+void explore(){
+
+  initPosition(STARTING_POSITION_X*5, STARTING_POSITION_Y*5); // Initializing the position
+
+  snake(); // Use the ‘snake’ strategy
+  // strategy_beta();
+
+  freePosition(); // Stop updating the position
+  send_map(); // The map is ready to be sent to the server.
+}
+
+void snake()
+{
+  int ob = 0; // For checking consecutive obstacles
+  int round = 1;
+  int i = 0; // The number of iterations
+  int timeInit = clock() / CLOCKS_PER_SEC; // The initial time. It will be used to work out the time spent in exploring the arena.
+
+  turn(-90); // Turn to the angle 0° to explore the area horizontally.
+
+  while (exploring && (clock() / CLOCKS_PER_SEC - timeInit < 180)) {
+    if (i % 2 == 1) { // Correct the heading every two iterations.
+      correctHeading();
+    }
+
+    goStraight(10000,1);
+
+    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.(Mainly for the virtual fence in the big arena)
+
+    pthread_mutex_lock(&turningMutex); // Stop turning the sonar sensor in the thread
+
+    stopRunning(); // Stop running to deal with the situation (Finding an obstacle or getting out of the arena)
+
+    if (closeToObstacles()) {
+      if (!isBall()) {
+        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
+      }
+
+      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s. Consecutive obstacles: %d.\n", getSonarValue(), getColorName(getColorValue()), ob);
+    }
+
+    goStraight(((ob >= 2 || !onTheMap()) ? 750 : 500),-1); // Run a backward for some milliseconds before turning to an another side; to return to the arena if the robot is out of it.
+    turn(round*90); // Quarter-turn to avoid the obstacle OR to avoid leaving the arena
+
+    if (!closeToObstacles()) {
+      goStraight(500,1); // Go to the next line to explore it.
+      ob = 0;
+    } else {
+
+      if (!isBall()) {
+        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
+      }
+
+      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s. OB = %d.\n", getSonarValue(), getColorName(getColorValue()), ob);
+      ob++;
+    }
+
+    turn(round*90); // Quarter-turn to explore the new line.
+
+    if (ob >= 2){
+      printf("WARNING: Limit of consecutive obstacles is reached: %d/2.\n",ob);
+      turn(round*90); // Quarter-turn to get out of the corner
+    }
+    round = -round;
+    pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
+    i++;
+  }
+}
+
+void strategy_beta()
+{
+  int timeInit = clock() / CLOCKS_PER_SEC; // The initial time. It will be used to work out the time spent in exploring the arena.
+  int i = 0; // The number of iterations
+
+
+  while (exploring && (clock() / CLOCKS_PER_SEC - timeInit < 180)) {
+    if (i % 2 == 1) { // Correct the heading every two iterations.
+      correctHeading();
+    }
+
+    goStraight(10000,1);
+
+    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.(Mainly for the virtual fence in the big arena)
+
+    pthread_mutex_lock(&turningMutex); // Stop turning the sonar sensor in the thread
+
+    stopRunning(); // Stop running to deal with the situation (Finding an obstacle or getting out of the arena)
+
+    if (closeToObstacles()) {
+      if (!isBall()) {
+        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
+      }
+
+      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s. Consecutive obstacles: %d.\n", getSonarValue(), getColorName(getColorValue()), ob);
+    }
+
+    if (!onTheMap()) {  //for the virtual fence in the big arena
+      goStraight(750,-1); // Run a backward to return to the arena if the robot is out of it.
+    }
+
+    BasicReaction();
+
+    pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
+    i++;
+  }
+}
+
+/* END: The exploring functions */
