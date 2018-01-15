@@ -1334,14 +1334,14 @@ nav ul li:hover, nav ul li.active {
     }
 }
 
-figure figcaption {
+figure.InSightPhoto figcaption {
 	font-style: italic;
 	font-size: .90em;
 	margin: 3px 0px 10px;
 	text-align: center;
 }
 
-figure img {
+figure.InSightPhoto img {
 	background: rgba(255, 255, 255, 1);
 	border: 1px solid rgba(153, 153, 153, 1);
 	border-radius: 16px;
