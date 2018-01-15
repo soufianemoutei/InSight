@@ -65,9 +65,10 @@ $.extend($.easing,
     }
 })( jQuery );
 
+
 $(document).ready(function (){
 
-    $('nav li a').navScroller();
+  $('nav li a').navScroller();
 
 	$(".sectiondivider").on('click', function(event) {
     	$('html,body').animate({scrollTop: $(event.target.parentNode).offset().top - 50}, 400, "linear");
@@ -83,4 +84,35 @@ $(document).ready(function (){
             });
         }
 	});
+
+  var indexPlaylist = 0;
+  $("#video_player figcaption a").on("click", function(event) {
+    event.preventDefault();
+    $("#video_player figcaption a").eq(indexPlaylist).attr("class","");
+    $("#jukebox").attr({
+      "src": $(this).attr("href"),
+      "poster": $(this).prop("img").attr("src"),
+      "autoplay": "autoplay"
+    });
+    indexPlaylist = $(this).index();
+    $("#video_player figcaption a").eq(indexPlaylist).attr("class","currentvid");
+  });
+
+  $("#jukebox").attr({
+    "src": $("#video_player figcaption a").eq(indexPlaylist).attr("href"),
+  });
+
+  $("#jukebox").on("ended",function(){
+    $("#video_player figcaption a").eq(indexPlaylist).attr("class","");
+    ++indexPlaylist;
+    if (indexPlaylist < $("#video_player figcaption a").length) {
+      $("#jukebox").attr({
+        "src": $("#video_player figcaption a").eq(indexPlaylist).attr("href"),
+      });
+      $("#video_player figcaption a").eq(indexPlaylist).attr("class","currentvid");
+      $("#jukebox")[0].play();
+    }
+  });
+
+
 });
