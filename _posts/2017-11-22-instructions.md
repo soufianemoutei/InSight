@@ -11,44 +11,131 @@ fa-icon: terminal
 
 We decided to adopt a snake movement to explore the arenas. This method consists of scanning the area at the first round in horizontal lines and at the second round in vertical lines. The second exploration enables to visit places that were not explored at the first round due to the detection of an obstacle in the path. When the robot completes its first round (i.e. it’s blocked by three fences and follows the same path again) it turns by 90 degrees and repeats the same maneuver vertically.
 
-Whenever there is an obstacle detected in the range of 20 centimeters by the front sensor, the robot will stop, move backward for few milliseconds to ensure it has enough space and take a turn in either the right or left direction depending on its current position. The choice of 20 centimeters was made after several tests considering the speed and acceleration of the robot since it doesn’t stop immediately after the detection.
+Whenever there is an obstacle detected in the range of 20 centimeters by the front sensor, the robot will stop, move backward for few milliseconds to ensure it has enough space and take a turn in either the right or left direction depending on its current position. The choice of 20 centimeters was made after several tests considering the speed and acceleration of the robot.
 
-Small arena vs Big arena:
+### Small arena vs Big arena:
 
-Two strategies are followed depending on the type of the arena. Contrary to the small arena that has four real wooden fences, the big arena may have a virtual starting fence. To inform the robot of the existence of the virtual fence we use the robot coordinates as its starting point is located at the virtual fence. Consequently, when the position of the robot gets negative it means that it has reached the limit of the area to scan. This affirmation is used as condition to put the robot on a new vetical line.
+Two strategies are followed depending on the type of the arena. Contrary to the small arena that has four real wooden fences, the big arena may have a virtual starting fence. To inform the robot of the existence of the virtual fence we use the robot coordinates as its starting point is located at the virtual fence. Consequently, when the position of the robot gets negative, it means that it has reached the limit of the area to scan. This affirmation is used as condition to put the robot on a new vertical line after going backward for 1.5 seconds.
 
-Acceleration and speed parameters are set in order to enable a progressive stop of the robot. 
+Acceleration and speed parameters are set in order to enable a progressive stop of the robot.
 
-Correction/ Calibration of the robot to increase its accuracy:
+{% highlight clike linenos=table %}
+while (time_spent < 200s AND server is still allowing the robot to continue the exploration) {
+  Correct the heading every two iterations.
+  angle = getGyroValue();
+  Run until InSight sees an obstacle or if it's out of the arena;
+  error = getGyroValue() - angle;
+  Turn the robot by -error° degrees if error is larger than ERROR;
+  Stop turning the sonar sensor in the thread;
+
+  if (closeToObstacles() && !isBall()) {
+    Add the obstacle to the map if it isn't movable;
+  }
+
+  if (!onTheMap()) {
+    Run backward for 1.5 seconds to return to the arena;
+  } else {
+    Run backward for some milliseconds before turning to an another side;
+  }
+
+  Quarter-turn to avoid the obstacle OR to avoid leaving again the arena;
+  If there are obstacles to release, release one and inform the server that the robot has just released an obstacle;
+
+  if (!closeToObstacles()) {
+    Run for 0.85 seconds to go to the next line in order to explore it;
+  } else {
+    Add the obstacle to the map if it isn't movable;
+  }
+
+  Quarter-turn to explore the new line;
+  If the limit of the consecutive obstacles is reached (2), quarter-turn to get out of the corner;
+  Continue turning the sonar sensor in the thread;
+}
+{% endhighlight %}
+
+### Correction/ Calibration of the robot to increase its accuracy:
 Since many factors influence the motion stability of the robot, we decided to add a function that stabilizes the robot if it deviates from its original path by using the value of the gyroscope. Indeed, if the difference between the current and original value is more than 15 degrees the robot has to stop and return to its original path.
 
-Thread for moving-eyes:
-To avoid bumping into obstacles located at the front right or left of the robot, a new thread was implemented to rotate periodically the ultrasonic sensor located at the front of the robot. The window angle was set to a small value (approximately 30 degrees) in order to avoid bumping into obstacles located at the front of the robot while moving its eyes.
+{% highlight clike linenos=table %}
+angle = getHeading() mod 90;
+if (angle > ERROR AND angle <= 45) {
+  Turn by -angle° degrees;
+} else if (angle > 45 AND angle < (90-ERROR)){
+  Turn by (90-angle)° degrees;
+}
+{% endhighlight %}
 
+### Thread for moving-eyes:
+To avoid bumping into obstacles located at the front right or left of the robot, a new thread was implemented to rotate periodically the ultrasonic sensor located at the front of the robot. The window angle was set to approximately 40 degrees in order to avoid bumping into obstacles located at the front of the robot while moving its eyes.
 
-Other strategies dropped:
-1/Exploration following layers: 
+{% highlight clike linenos=table %}
+direction = 1;
+ANGLE_THREAD_SONAR = 40;
+while (exploring) {
+  Turn the sonar sensor by (direction * ANGLE_THREAD_SONAR)° degrees;
+  Turn the sonar sensor by -(direction * ANGLE_THREAD_SONAR)° degrees;
+  direction = -direction;
+}
+{% endhighlight %}
+
+### Other strategies dropped:
+
+1 - Exploration following layers:
 The robot explores the arena by repeating recursively the same algorithm on different layers of the arena until it has visited all the squares of the map. The first layer being the whole perimeter of the arena and the second being the new perimeter after excluding the first layer. The drawback of this method was to steer clear of the obstacles that required rotating the front sonar in their direction which caused bumping into front obstacles when the sensor was not facing them.
 
-2/Exploration by avoiding collisions:
+2 - Exploration by avoiding collisions:
 This simple method enables to detect obstacles and correspondingly change the direction of the robot to the one free from obstacles (i.e. the one that has the highest value of the sonar) to avoid collisions. Therefore, when the front sensor detects obstacles within the range of 20 centimeters, the robot is made to turn right or left. If both the right and left side are free from obstacles, the robot would have to turn to the side that was less visited. The drawback of the method was its randomness that might lead to a limited exploration of the arena.
 
 
 ## POSITION TRACKING
 
-The estimated position of the robot is determined by combining the values of the rotational speed of the wheels with a tachometer and the robot’s  heading with the embedded gyroscope.
+The estimated position of the robot is determined by combining the values of the optical encoders used to measure wheel rotation and the robot's heading with the embedded gyroscope.
 With this known parameters, the robot can estimate at any time of the exploration its current position using the following mathematical equations:
 
+- To work out the wheel displacement:
 {% highlight clike linenos=table %}
-POS_X = POS_X + DISPLACEMENT * cos(HEADING + ROTATION / 2)
-POS_Y = POS_Y + DISPLACEMENT * sin(HEADING + ROTATION / 2)
+WHEEL_DIAMETER = 5.6;
+COUNTS_PER_REVOLUTION = 360;
+ENCODER_SCALE_FACTOR = PI * WHEEL_DIAMETER / COUNTS_PER_REVOLUTION;
+
+DISPLACEMENT = (LEFT_ENCODER_COUNT + RIGHT_ENCODER_COUNT) * ENCODER_SCALE_FACTOR / 2;
 {% endhighlight %}
 
-*This method was implemented based on the known Odometry method presented at the following website: http://www.robotnav.com/position-estimation/
+- To work out the robot heading: (initial heading is 90°)
+{% highlight clike linenos=table %}
+HEADING = HEADING - (getGyroValue() - getGyroPreviousValue());
+{% endhighlight %}
+
+- To work out the robot position:
+{% highlight clike linenos=table %}
+POS_X = POS_X + DISPLACEMENT * cos(HEADING)
+POS_Y = POS_Y + DISPLACEMENT * sin(HEADING)
+{% endhighlight %}
+
+We used a C structure to represent the robot position:
+
+{% highlight clike linenos=table %}
+typedef struct Position {
+   float x; // The x-position
+   float y; // The y-position
+   int16_t ux; // The x-position of the map, it equals x-position * 5 (each square on the map has sides with 5cm long)
+   int16_t uy; // The y-position of the map, it equals y-position * 5 (each square on the map has sides with 5cm long)
+   int heading; // The current heading of the robot. The initial value is 90°
+} Position;
+{% endhighlight %}
+
+The robot position is updated in a thread. The coordinates x and y are updated while the robot is still exploring. The coordinates ux and uy are updated, only if the robot changes the square, by working out respectively the nearest integer to the real numbers x/5 and y/5.
+
+{% highlight clike linenos=table %}
+POS_UX = getNearestInteger(POS_X / 5);
+POS_UX = getNearestInteger(POS_Y / 5);
+{% endhighlight %}
+
+* This method was implemented based on the known Gyroscope Enhanced Odometry approach presented at the following website: http://www.robotnav.com/position-estimation/
 
 
 ## COMPETITION WITH OTHER ROBOTS
-The strategy adopted to compete with other robots was to release a movable obstacle (red ball) in the front of the first non-movable obstacle detected so as to mislead other teams about the identity of the obstacle.
+The strategy adopted to compete with other robots was to release an obstacle in the front of the first non-movable obstacle detected so as to mislead other teams about the identity of the obstacle.
 The robot approaches the non-movable obstacle turns to its right or left, releases the ball then continues its trajectory.
 
 # **USING THE SOURCE CODE**
