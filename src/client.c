@@ -11,6 +11,9 @@
 #include "client.h"
 #include "engines.h"
 #include "position.h"
+#include "main.h"
+#include "navigation.h"
+
 
 int s;
 uint16_t msgId = 0x0000;
@@ -37,7 +40,7 @@ void initClient() {
       receive();
     }
   } else {
-    fprintf (stderr, "Failed to connect to server...\n");
+    fprintf(printFile, "ERROR: Failed to connect to server...\n");
     sleep(2);
     exit(EXIT_FAILURE);
   }
@@ -59,12 +62,12 @@ void receive() {
   int bytes_read = read(s, string, 58);
 
   if (bytes_read <= 0) {
-    fprintf (stderr, "Server unexpectedly closed connection...\n");
+    fprintf(printFile, "ERROR: Server unexpectedly closed connection...\n");
     closeClient();
     exit (EXIT_FAILURE);
   }
 
-  printf("Received %d bytes\n", bytes_read);
+  fprintf(printFile,"Received %d bytes\n", bytes_read);
 
   if (string[2] != 0xFF) {
     send_ack(*((uint16_t *) string), string[2]);
@@ -72,30 +75,30 @@ void receive() {
 
   switch (string[4]) {
     case MSG_ACK:
-    printf("ACK Message was received; State:%s\n",(string[7] == 0 ? "OK" : "Error"));
+    fprintf(printFile,"ACK Message was received; State:%s\n",(string[7] == 0 ? "OK" : "Error"));
     break;
 
     case MSG_START:
-    printf("START Message was received.\n");
+    fprintf(printFile,"START Message was received.\n");
     sending = 1; // It means we allow the robot to send messages to the server
     explore(); // Explore the map
     break;
 
     case MSG_STOP:
-    printf("STOP Message was received.\n");
+    fprintf(printFile,"STOP Message was received.\n");
     closeClient();
     break;
 
     case MSG_KICK:
-    printf("The robot %d was kicked.\n",string[5]);
+    fprintf(printFile,"The robot %d was kicked.\n",string[5]);
     break;
 
     case MSG_CUSTOM:
-    printf("CUSTOM Message was received from %d: %s\n",string[2],(string+5));
+    fprintf(printFile,"CUSTOM Message was received from %d: %s\n",string[2],(string+5));
     break;
 
     default:
-    printf("ERROR: THE TYPE OF THE RECEIVED MESSAGE IS UNKNOWN.\n");
+    fprintf(printFile,"ERROR: THE TYPE OF THE RECEIVED MESSAGE IS UNKNOWN.\n");
     break;
 
   }
@@ -106,7 +109,7 @@ void send_ack(uint16_t msgID, char dst) {
   if (!sending) {
     return ;
   }
-  printf("Sending ACK Message to %d.\n",dst);
+  fprintf(printFile,"Sending ACK Message to %d.\n",dst);
   *((uint16_t *) string) = msgId++; // ID
   string[2] = TEAM_ID; // Source
   string[3] = dst; // Destination
@@ -122,7 +125,7 @@ void send_obstacle(int16_t x, int16_t y) {
   if (!sending) {
     return ;
   }
-  printf("Sending OBSTACLE Message (%d,%d) to the server.\n",x,y);
+  fprintf(printFile,"Sending OBSTACLE Message (%d,%d) to the server.\n",x,y);
   *((uint16_t *) string) = msgId++; // ID
   string[2] = TEAM_ID; // Source
   string[3] = 0xFF; // Destination = Server
@@ -140,7 +143,7 @@ void send_position(int16_t x, int16_t y) {
   if (!sending) {
     return ;
   }
-  printf("Sending the position (%d,%d) to the server.\n",x,y);
+  fprintf(printFile,"Sending the position (%d,%d) to the server.\n",x,y);
   *((uint16_t *) string) = msgId++; // ID
   string[2] = TEAM_ID; // Source
   string[3] = 0xFF; // Destination = Server
@@ -162,7 +165,7 @@ void send_map() {
   for (int y = 0; y < MAP_HEIGHT; y++) {
     for (int x = 0; x < MAP_WIDTH; x++) {
       if (map[y][x] != NOT_VISITED) {
-        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == EMPTY ? "EMPTY" : "OBSTACLE"));
+        fprintf(printFile,"The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == EMPTY ? "EMPTY" : "OBSTACLE"));
       }
       *((uint16_t *) string) = msgId++; // ID
       string[2] = TEAM_ID; // Source
@@ -194,7 +197,7 @@ void send_map() {
 
 void send_done() {
   char string[5];
-  printf("The map is finished.\n");
+  fprintf(printFile,"The map is finished.\n");
   *((uint16_t *) string) = msgId++; // ID
   string[2] = TEAM_ID; // Source
   string[3] = 0xFF; // Destination = Server

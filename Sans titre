@@ -1,0 +1,211 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <math.h>
+#include <string.h>
+#include "position.h"
+#include "engines.h"
+#include "sensors.h"
+#include "ev3.h"
+#include "ev3_sensor.h"
+#include "ev3_port.h"
+
+State map[MAP_HEIGHT][MAP_WIDTH];
+
+void initMap() {
+	printf("Initializing the map.\n"); // With NOT_VISITED
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			map[i][j] = NOT_VISITED;
+		}
+	}
+}
+
+void updateMapPosition(int sonarValue) {
+	int16_t x = 0, y = 0;
+	pthread_mutex_lock(&positionMutex);
+	x = (int16_t) getNearestInteger((position.x + (sonarValue / 10) * cos(heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
+	y = (int16_t) getNearestInteger((position.y + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
+	if (!positionOnTheMap(x,y)) {
+		printf("ERROR: The position of the obstacle is not on the map.\n");
+		pthread_mutex_unlock(&positionMutex);
+		return ;
+	}
+	map[y][x] = OBSTACLE;
+	pthread_mutex_unlock(&positionMutex);
+}
+
+void correctMap() {
+	correctMap1();
+	correctMap2();
+	correctMap1();
+}
+
+
+
+void correctMap1() {
+	int numberOfEmptySquaresAround = 0, numberOfObstaclesAround = 0, numberOfNonVisistedAround = 0;
+
+	pthread_mutex_lock(&positionMutex);
+	printf("Correcting the map.\n");
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+		for (int x = 0; x < MAP_WIDTH; x++) {
+			if (map[y][x] == NOT_VISITED) {
+				if (y >=1 && map[y-1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y >=1 && map[y-1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+				if (y >=1 && map[y-1][x] == NOT_VISITED) {
+					numberOfNonVisistedAround++;
+				}
+
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == NOT_VISITED) {
+					numberOfNonVisistedAround++;
+				}
+
+				if (x >=1 && map[y][x-1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x >=1 && map[y][x-1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+				if (x >=1 && map[y][x-1] == NOT_VISITED) {
+					numberOfNonVisistedAround++;
+				}
+
+				if (x < MAP_WIDTH-1 && map[y][x+1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x < MAP_WIDTH-1 && map[y][x+1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+				if (x < MAP_WIDTH-1 && map[y][x+1] == NOT_VISITED) {
+					numberOfNonVisistedAround++;
+				}
+
+				if (numberOfObstaclesAround >= numberOfNonVisistedAround && numberOfObstaclesAround >= numberOfEmptySquaresAround && numberOfObstaclesAround) {
+					map[y][x] = OBSTACLE;
+					printf("Correcting map(%d,%d) to OBSTACLE.\n",x,y);
+				}
+
+				if (numberOfEmptySquaresAround >= numberOfNonVisistedAround && numberOfObstaclesAround < numberOfEmptySquaresAround) {
+					map[y][x] = EMPTY;
+					printf("Correcting map(%d,%d) to EMPTY.\n",x,y);
+				}
+			}
+			numberOfEmptySquaresAround = 0;
+			numberOfObstaclesAround = 0;
+			numberOfNonVisistedAround = 0;
+		}
+	}
+	pthread_mutex_unlock(&positionMutex);
+}
+
+void correctMap2() {
+	int numberOfEmptySquaresAround = 0, numberOfObstaclesAround = 0;
+
+	pthread_mutex_lock(&positionMutex);
+	printf("Correcting the map.\n");
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+		for (int x = 0; x < MAP_WIDTH; x++) {
+			if (map[y][x] == EMPTY) {
+				if (y >=1 && map[y-1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y >=1 && map[y-1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (x >=1 && map[y][x-1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x >=1 && map[y][x-1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (x < MAP_WIDTH-1 && map[y][x+1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x < MAP_WIDTH-1 && map[y][x+1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (numberOfObstaclesAround >= numberOfEmptySquaresAround && numberOfObstaclesAround) {
+					map[y][x] = OBSTACLE;
+					printf("Correcting map(%d,%d) to OBSTACLE.\n",x,y);
+				}
+			}
+			numberOfEmptySquaresAround = 0;
+			numberOfObstaclesAround = 0;
+		}
+	}
+	pthread_mutex_unlock(&positionMutex);
+}
+
+void printMap(path_file) {
+
+	if (strlen(path_file) == 0) {
+		FILE* mapFile = stdout;
+	} else {
+		FILE* mapFile = fopen(path_file, "w+");
+	}
+
+	pthread_mutex_lock(&positionMutex);
+
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+		for (int x = 0; x < MAP_WIDTH; x++) {
+			if (map[y][x] == NOT_VISITED) {
+				fprintf(mapFile,"?");
+			} else if (map[y][x] == EMPTY) {
+				fprintf(mapFile,"-");
+			} else {
+				fprintf(mapFile,"X");
+			}
+		}
+		fprintf(mapFile,"\n");
+	}
+
+	pthread_mutex_unlock(&positionMutex);
+
+	if (strlen(path_file) == 0) {
+		fclose(mapFile);
+	}
+}
+
+void addSmallArenaBounds() {
+	pthread_mutex_lock(&positionMutex);
+
+	for (int x = 0; x < MAP_WIDTH; x++) {
+		map[0][x] = OBSTACLE;
+	}
+
+	for (int x = 0; x < MAP_WIDTH; x++) {
+		map[MAP_HEIGHT-1][x] = OBSTACLE;
+	}
+
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+		map[y][0] = OBSTACLE;
+	}
+
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+		map[y][MAP_WIDTH-1] = OBSTACLE;
+	}
+
+	pthread_mutex_unlock(&positionMutex);
+}

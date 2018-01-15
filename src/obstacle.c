@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 #include "ev3.h"
 #include "ev3_port.h"
 #include "ev3_sensor.h"
@@ -9,7 +10,7 @@
 #include "sensors.h"
 #include "obstacle.h"
 #include "position.h"
-#include <time.h>
+#include "main.h"
 
 char closeToObstacles() {
   return (getSonarValue() <= DISTANCE_FROM_OBSTACLE);
@@ -41,7 +42,7 @@ void BasicReaction()
   turnSonar(90); // Check the left of the robot
   int left = getSonarValue();
 
-  printf("OBSTACLE: left distance is %d, right distance is %d.\n", left, right);
+  fprintf(printFile,"OBSTACLE: left distance is %d, right distance is %d.\n", left, right);
 
   turnSonar(-45); // Turn the sonar sensor to its initial position (before BasicReaction())
 
@@ -93,7 +94,7 @@ void checkBeforeTurn() {
       updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
     }
 
-    printf("An obstacle was found on the left of the robot! The distance from this obstacle is: %dmm; its color is %s.\n", getSonarValue(), getColorName(getColorValue()));
+    fprintf(printFile,"An obstacle was found on the left of the robot! The distance from this obstacle is: %dmm; its color is %s.\n", getSonarValue(), getColorName(getColorValue()));
 
     goStraight(0,-1); // Run backward until the robot is not seeing the obstacle anymore.
     while (closeToObstacles());

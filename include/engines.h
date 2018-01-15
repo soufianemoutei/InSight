@@ -4,7 +4,6 @@
 #ifndef __ENGINES__
 #define __ENGINES__
 
-#define Sleep( msec ) usleep((msec) * 1000) // Sleep for ‘msec’ milliseconds.
 #define DEGREE_TO_COUNT( d )  (( d ) * 190 / 90) // Work out the relative position from the angle ‘d’°.
 #define DEGREE_TO_TIME_FE( d )  (( d ) * 1000 / 180 ) // Work out the time required to turn the sonar sensor by ‘d’° degrees.
 
@@ -12,8 +11,8 @@
 #define RIGHT_PORT 65 // The right wheel's engine port
 #define BACK_PORT 66 // The back engine port. This engine is used to release an obstacle.
 #define FRONT_PORT 67 // The front engine port. This engine is used to turn the sonar sensor.
-#define MAXSPEED 1050 // The maximum speed of the wheels
 
+#define MAXSPEED 1050 // The maximum speed of the wheels
 #define SPEED_LINEAR MAXSPEED/2 // The wheels' engines speed for linear motion
 #define SPEED_CIRCULAR MAXSPEED/4 // The wheels' engines speed for circular motion
 #define SPEED_FRONT_ENGINE MAXSPEED/5 // The front engine speed
@@ -21,7 +20,7 @@
 
 #define ERROR 15 // The threshold to correct the error accumulated during the rotations of the robot
 
-#define ANGLE_THREAD_SONAR 20 // The absolute value of the angle used to turn the sonar sensor in the thread.
+#define ANGLE_THREAD_SONAR 40 // The absolute value of the angle used to turn the sonar sensor in the thread.
 
 typedef struct Wheel {
   uint8_t left; // Left wheel's engine
