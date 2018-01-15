@@ -1333,3 +1333,21 @@ nav ul li:hover, nav ul li.active {
         margin-left: 0
     }
 }
+
+figure figcaption {
+	font-style: italic;
+	font-size: .90em;
+	margin: 3px 0px;
+	text-align: center;
+}
+
+figure img, figure video {
+	background: rgba(255, 255, 255, 1);
+	border: 1px solid rgba(153, 153, 153, 1);
+	border-radius: 16px;
+	display: block;
+	margin: 0px auto 3px;
+	padding: 6px;
+	width: 640px;
+	height: 480px;
+}
