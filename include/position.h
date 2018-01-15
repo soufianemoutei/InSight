@@ -17,9 +17,9 @@ typedef struct Position {
 } Position;
 
 typedef enum State {
-  NOT_VISITED = 0,
-  VISITED = 1,
-  OBSTACLE = 2
+  NOT_VISITED = 0, // Unknown state
+  EMPTY = 1, // Empty, the robot can visit it
+  OBSTACLE = 2 // Obstacle
 } State;
 
 extern Position position; // The current position of the robot
@@ -27,7 +27,7 @@ extern int heading; // The current heading of the robot. The initial value is 90
 extern char updating; // We update the position while updating = 1
 extern pthread_t updateThread; // For the thread updating the position
 extern pthread_mutex_t positionMutex; // To control the updating on the variables position and map
-extern State map[MAP_HEIGHT][MAP_WIDTH]; // The map of the arena. It's a matrix whose elements are States: NOT_VISITED, VISITED (but there were no non-movable obstacles), OBSTACLE (non-movable obstacles)
+extern State map[MAP_HEIGHT][MAP_WIDTH]; // The map of the arena. It's a matrix whose elements are States: NOT_VISITED, EMPTY (the robot can visit it or there is just a movable obstacle), OBSTACLE (non-movable obstacles)
 
 void initPosition(float x, float y); // Init the position, the map and the threads
 void initMap(); // Init the map with NOT_VISITED
@@ -36,8 +36,9 @@ int getHeading();
 void updateMapPosition(int sonarValue); // It's called when a non-movable obstacle was found, it updates the position of the obstacle on the map with the value OBSTACLE
 void* update(); // The function used with the updating thread. It updates the position and the map
 void freePosition(); // It stops updating and the updating thread as well
-int getNearestInteger(float f);
-char positionOnTheMap(int x, int y);
-char onTheMap();
+int getNearestInteger(float f); // Returns the nearest integer to f
+char positionOnTheMap(int x, int y); // Returns true if (x,y) is on the arena
+char onTheMap(); // Returns true if the robot is on the arena
+void correctMap(); // Corrects the non-visited squares on the map
 
 #endif
