@@ -38,6 +38,7 @@ typedef struct Engines {
 extern Engines engines; // The variable containing the four engines.
 extern char exploring; // If (exploring = 1): the robot will start exploring the map until (exploring = 0).
 extern int directionOfSonarSensor; // The sonar sensor will turn in the trigonemtric direction if (directionOfSonarSensor = 1), in the clockwise direction if (directionOfSonarSensor = -1)
+extern int obstaclesToRelease; // The number of obstacles to release
 
 extern pthread_t movingEyesThread; // A thread to move the eyes (Sonar sensor) of the robot.
 extern pthread_mutex_t turningMutex; // To control the thread of the sonar sensor: If an obstacle is found, the robot will stop moving its eyes.
@@ -63,5 +64,7 @@ void* move_eyes(); // The function the thread runs to turn the sonar sensor to t
 void explore(); // Explore the arena: the procedure
 void snake(); // A ‘snake’ strategy to explore the arena
 void strategy_beta(); // Another strategy to explore the arena. -- Not very efficient due to the randomness --
+void exploreUsingLayers(); // Another strategy to explore the arena by considering it as multiple layers
+void exploreLayer(int currentLayerID); // Explore the layer ‘currentLayerID’
 
 #endif
