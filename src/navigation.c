@@ -65,7 +65,7 @@ void snake()
 
     if (closeToObstacles()) {
       if (!isBall()) {
-        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
+        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it isn't movable.
       }
 
       fprintf(printFile,"An obstacle was found! The distance from this obstacle is: %dmm; its color is %s. Consecutive obstacles: %d.\n", getSonarValue(), getColorName(getColorValue()), ob);
@@ -76,9 +76,9 @@ void snake()
       outTheMap = 0;
       pthread_mutex_unlock(&positionMutex);
 
-      goStraight(1500,-1); // Run a backward to return to the arena if the robot is out of it.
+      goStraight(1500,-1); // Run backward to return to the arena if the robot is out of it.
     } else {
-      goStraight(((ob >= 2) ? 1000 : 750),-1); // Run a backward for some milliseconds before turning to an another side.
+      goStraight(((ob >= 2) ? 1000 : 750),-1); // Run backward for some milliseconds before turning to an another side.
     }
 
     turn(round*90); // Quarter-turn to avoid the obstacle OR to avoid leaving the arena
