@@ -91,7 +91,7 @@ $(document).ready(function (){
     $("#video_player figcaption a").eq(indexPlaylist).attr("class","");
     $("#jukebox").attr({
       "src": $(this).attr("href"),
-      "poster": $(this).prop("img").attr("src"),
+      "poster": "",
       "autoplay": "autoplay"
     });
     indexPlaylist = $(this).index();
