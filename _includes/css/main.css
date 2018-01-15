@@ -1342,10 +1342,4 @@ figure figcaption {
 }
 
 figure img, figure video {
-	background: rgba(255, 255, 255, 1);
-	border: 1px solid rgba(153, 153, 153, 1);
-	border-radius: 16px;
-	display: block;
-	margin: 0px auto 3px;
-	padding: 6px;
 }
