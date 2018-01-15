@@ -208,10 +208,11 @@ void snake()
   int i = 0; // The number of iterations
   int timeInit = clock() / CLOCKS_PER_SEC; // The initial time. It will be used to work out the time spent in exploring the arena.
   int16_t pos[2]; // It will be used to store the position of the robot in case it releases an obstacle
+  int rounds = 0; // 1st round, the robot will explore horizontally. 2nd round, the robot will explore vertically. After that, it will stop exploring.
 
   turn(-90); // Turn to the angle 0° to explore the area horizontally.
 
-  while (exploring && (clock() / CLOCKS_PER_SEC - timeInit < 180)) {
+  while (exploring && (clock() / CLOCKS_PER_SEC - timeInit < 180) && rounds < 2) {
     if (i % 2 == 1) { // Correct the heading every two iterations.
       correctHeading();
     }
@@ -261,6 +262,7 @@ void snake()
     if (ob >= 2){
       printf("WARNING: Limit of consecutive obstacles is reached: %d/2.\n",ob);
       turn(round*90); // Quarter-turn to get out of the corner
+      rounds++;
     }
     round = -round;
     pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
