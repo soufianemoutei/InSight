@@ -1408,3 +1408,15 @@ figure video {
 		width: 33.33%;
 	}
 }
+
+.fa-stack {
+    font-size: 10em
+}
+
+.fa-stack-1x {
+    font-size: 13em
+}
+
+.fa-stack-2x {
+    font-size: 15em
+}
