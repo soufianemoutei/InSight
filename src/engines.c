@@ -238,8 +238,9 @@ void snake()
     if (obstaclesToRelease > 0) { // If there are obstacles to release
       backEngine(1); // Release an obstacle
       getPosition(pos);
-      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
-      backEngine(0);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot has just released an obstacle
+      //backEngine(0);
+      obstaclesToRelease--;
     }
 
     if (!closeToObstacles()) {
@@ -303,8 +304,9 @@ void strategy_beta()
     if (obstaclesToRelease > 0) { // If there are obstacles to release
       backEngine(1); // Release an obstacle
       getPosition(pos);
-      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
-      backEngine(0);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot has just released an obstacle
+      //backEngine(0);
+      obstaclesToRelease--;
     }
 
     pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
@@ -354,8 +356,9 @@ void exploreLayer(int currentLayerID) {
     if (obstaclesToRelease > 0) { // If there are obstacles to release
       backEngine(1); // Release an obstacle
       getPosition(pos);
-      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
-      backEngine(0);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot has just released an obstacle
+      //backEngine(0);
+      obstaclesToRelease--;
     }
 
     fourTurnsAction(1); // Go to the other side of the obstacle
