@@ -14,6 +14,7 @@
 Engines engines;
 char exploring = 1;
 int directionOfSonarSensor = 1;
+int obstaclesToRelease = 1;
 
 pthread_mutex_t turningMutex;
 pthread_t movingEyesThread;
@@ -206,6 +207,7 @@ void snake()
   int round = 1;
   int i = 0; // The number of iterations
   int timeInit = clock() / CLOCKS_PER_SEC; // The initial time. It will be used to work out the time spent in exploring the arena.
+  int16_t pos[2]; // It will be used to store the position of the robot in case it releases an obstacle
 
   turn(-90); // Turn to the angle 0° to explore the area horizontally.
 
@@ -216,7 +218,7 @@ void snake()
 
     goStraight(10000,1);
 
-    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.(Mainly for the virtual fence in the big arena)
+    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.
 
     pthread_mutex_lock(&turningMutex); // Stop turning the sonar sensor in the thread
 
@@ -232,6 +234,13 @@ void snake()
 
     goStraight(((ob >= 2 || !onTheMap()) ? 750 : 500),-1); // Run a backward for some milliseconds before turning to an another side; to return to the arena if the robot is out of it.
     turn(round*90); // Quarter-turn to avoid the obstacle OR to avoid leaving the arena
+
+    if (obstaclesToRelease > 0) { // If there are obstacles to release
+      backEngine(1); // Release an obstacle
+      getPosition(pos);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
+      backEngine(0);
+    }
 
     if (!closeToObstacles()) {
       goStraight(500,1); // Go to the next line to explore it.
@@ -271,7 +280,7 @@ void strategy_beta()
 
     goStraight(10000,1);
 
-    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.(Mainly for the virtual fence in the big arena)
+    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.
 
     pthread_mutex_lock(&turningMutex); // Stop turning the sonar sensor in the thread
 
@@ -285,15 +294,90 @@ void strategy_beta()
       printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s.\n", getSonarValue(), getColorName(getColorValue()));
     }
 
-    if (!onTheMap()) {  //for the virtual fence in the big arena
+    if (!onTheMap()) {
       goStraight(750,-1); // Run a backward to return to the arena if the robot is out of it.
     }
 
     BasicReaction();
 
+    if (obstaclesToRelease > 0) { // If there are obstacles to release
+      backEngine(1); // Release an obstacle
+      getPosition(pos);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
+      backEngine(0);
+    }
+
     pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
     i++;
   }
+}
+
+void exploreUsingLayers() {
+  int timeInit = clock() / CLOCKS_PER_SEC; // The initial time. It will be used to work out the time spent in exploring the arena.
+  int i = 1;
+
+  while (exploring && i <= 5 && (clock() / CLOCKS_PER_SEC - timeInit < 180)) {
+    exploreLayer(i); // Explore the i-th layer
+    i++;
+  }
+}
+
+void exploreLayer(int currentLayerID) {
+  int16_t posInit[2], pos[2];
+
+  getPosition(posInit);
+  printf("Exploring Layer %d: Starting position (%d,%d).\n",currentLayerID,posInit[0],posInit[1]);
+
+  turn(-90); // Start exploring the layer from the robot's right
+
+  do {
+    goStraight(10000,1);
+
+    while (!closeToObstacles() && onTheMap()); // Stop if the robot sees an obstacle or if it's out of the arena.
+
+    pthread_mutex_lock(&turningMutex); // Stop turning the sonar sensor in the thread
+
+    stopRunning(); // Stop running to deal with the situation (Finding an obstacle or getting out of the arena)
+
+    if (closeToObstacles()) {
+      if (!isBall()) {
+        updateMapPosition(getSonarValue()); // Add the obstacle to the map if it's movable.
+      }
+
+      printf("An obstacle was found! The distance from this obstacle is: %dmm; its color is %s.\n", getSonarValue(), getColorName(getColorValue()));
+    }
+
+    if (!onTheMap()) {
+      goStraight(750,-1); // Run a backward to return to the arena if the robot is out of it.
+    }
+
+    if (obstaclesToRelease > 0) { // If there are obstacles to release
+      backEngine(1); // Release an obstacle
+      getPosition(pos);
+      send_obstacle(pos[0], pos[1]); // Inform the server that the robot released an obstacle
+      backEngine(0);
+    }
+
+    fourTurnsAction(1); // Go to the other side of the obstacle
+
+    pthread_mutex_unlock(&turningMutex); // Continue turning the sonar sensor in the thread
+
+    getPosition(pos);
+    printf("Exploring Layer %d: Current position (%d,%d).\n",currentLayerID,pos[0],pos[1]);
+
+    while ((pos[0] < MAP_WIDTH-currentLayerID) || (pos[1] < MAP_HEIGHT-currentLayerID)) { // To make the robot return to layer ‘currentLayerID’.
+      goStraight(750,-1);
+      turn(90);
+    }
+
+  } while (!(pos[0] == posInit[0] && pos[1] == posInit[1])); // Until the robot reaches again its initial position.
+
+  turn(90); // Return to the initial heading
+  goStraight(4000,1); // Change the layer
+  do {
+    getPosition(pos);
+  } while (pos[1] != posInit[1]);
+  stopRunning();
 }
 
 /* END: The exploring functions */
