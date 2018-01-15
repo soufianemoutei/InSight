@@ -27,7 +27,7 @@ void initPosition(float x, float y) {
 	printf("Initial heading: %d.\n", heading);
 
 	initMap();
-	map[position.uy][position.ux] = VISITED;
+	map[position.uy][position.ux] = EMPTY;
 
 	pthread_mutex_init(&positionMutex, NULL);
 
@@ -121,7 +121,7 @@ void* update() {
 				if (map[position.uy][position.ux] == NOT_VISITED) {
 					// Update the position on the map only if it's never visited
 					printf("Updating the position of the robot on the map to: (x = %d, y = %d).\n", position.ux, position.uy);
-					map[position.uy][position.ux] = VISITED;
+					map[position.uy][position.ux] = EMPTY;
 				}
 			} else {
 				printf("WARNING: the robot is no longer on the map: (%d,%d).\n",position.ux,position.uy);
@@ -158,4 +158,57 @@ char onTheMap() {
 	on_the_map = positionOnTheMap(position.ux,position.uy);
 	pthread_mutex_unlock(&positionMutex);
 	return on_the_map;
+}
+
+void correctMap() {
+	int numberOfEmptySquaresAround = 0, numberOfObstaclesAround = 0;
+
+	pthread_mutex_lock(&positionMutex);
+	printf("Correcting the map.\n");
+	for (int y = 0; y < MAP_HEIGHT; y++) {
+    for (int x = 0; x < MAP_WIDTH; x++) {
+      if (map[y][x] == NOT_VISITED) {
+				if (y >=1 && map[y-1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y >=1 && map[y-1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (y < MAP_HEIGHT-1 && map[y+1][x] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (x >=1 && map[y][x-1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x >=1 && map[y][x-1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (x < MAP_WIDTH && map[y][x+1] == EMPTY) {
+					numberOfEmptySquaresAround++;
+				}
+				if (x < MAP_WIDTH && map[y][x+1] == OBSTACLE) {
+					numberOfObstaclesAround++;
+				}
+
+				if (numberOfObstaclesAround >= numberOfEmptySquaresAround && numberOfObstaclesAround) {
+					map[y][x] = OBSTACLE;
+					printf("Correcting map(%d,%d) to OBSTACLE.\n",x,y)
+				}
+
+				if (numberOfObstaclesAround < numberOfEmptySquaresAround) {
+					map[y][x] = EMPTY;
+					printf("Correcting map(%d,%d) to EMPTY.\n",x,y)
+				}
+      }
+			numberOfEmptySquaresAround = 0;
+			numberOfObstaclesAround = 0;
+    }
+  }
+	pthread_mutex_unlock(&positionMutex);
 }
