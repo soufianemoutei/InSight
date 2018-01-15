@@ -180,7 +180,7 @@ void* move_eyes() {
     pthread_mutex_lock(&turningMutex);
     turnSonar(directionOfSonarSensor * ANGLE_THREAD_SONAR);
     turnSonar(-directionOfSonarSensor * ANGLE_THREAD_SONAR);
-    directionOfSonarSensor = -1;
+    directionOfSonarSensor = -directionOfSonarSensor;
     pthread_mutex_unlock(&turningMutex);
     Sleep(100);
   }
