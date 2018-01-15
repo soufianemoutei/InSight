@@ -157,11 +157,12 @@ void send_map() {
   if (!sending) {
     return ;
   }
+  correctMap(); // Correct the map before sending it to the server
   printf ("Sending the map to the server...\n");
   for (int y = 0; y < MAP_HEIGHT; y++) {
     for (int x = 0; x < MAP_WIDTH; x++) {
       if (map[y][x] != NOT_VISITED) {
-        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == VISITED ? "VISITED" : "OBSTACLE"));
+        printf("The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == EMPTY ? "EMPTY" : "OBSTACLE"));
       }
       *((uint16_t *) string) = msgId++; // ID
       string[2] = TEAM_ID; // Source
@@ -171,22 +172,18 @@ void send_map() {
       string[6] = (uint8_t) (x >> 8);
       string[7] = (uint8_t) y; // The y-position of the map
       string[8]= (uint8_t) (y >> 8);
-      if (x == STARTING_POSITION_X && y == STARTING_POSITION_Y) { // Indicate the starting position with a red square
-        string[9] = 255;
+      if (map[y][x] == OBSTACLE) { // Indicate the obstacle position with a red square
+        string[9] = 200;
         string[10] = 0;
         string[11] = 0;
-      } else if (map[y][x] == OBSTACLE) { // Indicate the obstacle position with a blue square
-        string[9] = 0;
-        string[10] = 0;
-        string[11] = 255;
-      } else if (map[y][x] == VISITED) { // Indicate the visited position with a green square
-        string[9] = 0;
-        string[10] = 255;
-        string[11] = 0;
-      } else { // Indicate the non-visited position with a white square
+      } else if (map[y][x] == EMPTY) { // Indicate the empty position with a white square
         string[9] = 255;
         string[10] = 255;
         string[11] = 255;
+      } else { // Indicate the non-visited position with a gray square
+        string[9] = 128;
+        string[10] = 128;
+        string[11] = 128;
       }
       write(s, string, 12);
       Sleep(10);
