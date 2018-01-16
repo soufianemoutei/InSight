@@ -24,8 +24,8 @@ void initMap() {
 void updateMapPosition(int sonarValue) {
 	int16_t x = 0, y = 0;
 	pthread_mutex_lock(&positionMutex);
-	x = (int16_t) getNearestInteger((position.x + (sonarValue / 10) * cos(heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
-	y = (int16_t) getNearestInteger((position.y + (sonarValue / 10) * sin(heading * M_PI / 180)) / 5);
+	x = (int16_t) getNearestInteger((position.x + (sonarValue / 10) * cos(position.heading * M_PI / 180)) / 5); // Work out the position of the obstacle using the current position of the robot and the value given by the sonar sensor
+	y = (int16_t) getNearestInteger((position.y + (sonarValue / 10) * sin(position.heading * M_PI / 180)) / 5);
 	if (!positionOnTheMap(x,y)) {
 		fprintf(printFile,"ERROR: The position of the obstacle is not on the map.\n");
 		pthread_mutex_unlock(&positionMutex);
