@@ -147,7 +147,7 @@ typedef enum State {
 
 First, the map is initialized with NOT_VISITED values. Afterwards, in the thread updating the position, if the robot visits a new square that is NOT_VISITED, its value will be changed to EMPTY.
 
-If an obstacle is detected by the sonar sensor, the latter will sends us the value sonarValue representing the distance (in millimeters) between the robot and the obstacle. First we check if the obstacle is movable or not by checking its color (a movable obstacle is always a RED ball of diameter 3.5cm) and the color on the left and on the right of the obstacle (to make sure the obstacle isn't a red non-movable obstacle whose length has to be larger than 5cm); the color is detected by the light sonar:
+If an obstacle is detected by the sonar sensor, the latter will send the value sonarValue representing the distance (in millimeters) between the robot and the obstacle. First we check if the obstacle is movable or not by checking its color (a movable obstacle is always a RED ball of diameter 3.5cm) and the color on the left and on the right of the obstacle (to make sure the obstacle isn't a red non-movable obstacle whose length has to be larger than 5cm); the color is detected by the light sonar:
 
 {% highlight clike linenos=table %}
 function isBall() {
@@ -202,7 +202,7 @@ for y = 0,...,MAP_HEIGHT-1 {
       If numberOfObstaclesAround is larger than numberOfEmptySquaresAround and numberOfNonVisistedAround, change (x,y) to an obstacle:
       map[y][x] = OBSTACLE;
 
-      If numberOfEmptySquaresAround is larger than numberOfObstaclesAround and numberOfNonVisistedAround, change (x,y) to empty:
+      If numberOfEmptySquaresAround is larger than or equals numberOfObstaclesAround and numberOfNonVisistedAround, change (x,y) to empty:
       map[y][x] = EMPTY;
     }
     numberOfEmptySquaresAround = 0;
@@ -223,7 +223,7 @@ for y = 0,...,MAP_HEIGHT-1 {
       We look at the squares (x,y-1) (if y >= 1), (x,y+1) (if y < MAP_HEIGHT-1), (x-1,y) (if x >= 1) and (x+1,y) (if x < MAP_WIDTH-1);
       numberOfObstaclesAround = the number of obstacle squares within the 4 squares;
 
-      If numberOfObstaclesAround is larger than three, change (x,y) to an obstacle:
+      If numberOfObstaclesAround is larger than or equals three, change (x,y) to an obstacle:
       map[y][x] = OBSTACLE;
     }
     numberOfObstaclesAround = 0;

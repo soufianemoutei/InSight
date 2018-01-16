@@ -11,10 +11,6 @@ lsi: false
 markdown: kramdown
 
 title:       "InSight"
-keywords:    ""
-description: ""
-source_link: ""
-google_analytics_key:
 
 colors:
   black:     '#111111'
