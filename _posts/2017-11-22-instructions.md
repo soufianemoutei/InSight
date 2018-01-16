@@ -133,6 +133,119 @@ POS_UX = getNearestInteger(POS_Y / 5);
 
 * This method was implemented based on the known Gyroscope Enhanced Odometry approach presented at the following website: http://www.robotnav.com/position-estimation/
 
+## Generating the map
+
+We use a MAP_HEIGHT * MAP_WIDTH matrix of an enumeration representing the state of the squares (each square has sides with 5cm long):
+
+{% highlight clike linenos=table %}
+typedef enum State {
+  NOT_VISITED = 0, // Unknown state
+  EMPTY = 1, // Empty, the robot can visit it
+  OBSTACLE = 2 // Non-movable obstacle
+} State;
+{% endhighlight %}
+
+First, the map is initialized with NOT_VISITED values. Afterwards, in the thread updating the position, if the robot visits a new square that is NOT_VISITED, its value will be changed to EMPTY.
+
+If an obstacle is detected by the sonar sensor, the latter will sends us the value sonarValue representing the distance (in millimeters) between the robot and the obstacle. First we check if the obstacle is movable or not by checking its color (a movable obstacle is always a RED ball of diameter 3.5cm) and the color on the left and on the right of the obstacle (to make sure the obstacle isn't a red non-movable obstacle whose length has to be larger than 5cm); the color is detected by the light sonar:
+
+{% highlight clike linenos=table %}
+function isBall() {
+  color = getColorValue(); // If it equals 5, the color is red.
+
+  Turn the sonar sensor by 20° degrees to the right;
+  colorRight = getColorValue();
+
+  Turn the sonar sensor by 40° degrees to the right;
+  colorLeft = getColorValue();
+
+  Turn the sonar sensor by 20° degrees to the left;
+
+  return (color == 5 AND colorRight != 5 AND colorLeft != 5);
+}
+{% endhighlight %}
+
+
+When we make sure the obstacle in non-movable, we update the square value with OBSTACLE. To do so, we work out the position of the obstacle using the position of the robot and the its heading:
+
+{% highlight clike linenos=table %}
+POS_X_OBSTACLE = POS_X + (sonarValue / 10) * cos(HEADING);
+POS_Y_OBSTACLE = POS_Y + (sonarValue / 10) * sin(HEADING);
+{% endhighlight %}
+
+Then, we update the map:
+
+{% highlight clike linenos=table %}
+POS_UX_OBSTACLE = getNearestInteger(POS_X_OBSTACLE / 5);
+POS_UY_OBSTACLE = getNearestInteger(POS_X_OBSTACLE / 5);
+
+map[POS_UY_OBSTACLE][POS_UX_OBSTACLE] = OBSTACLE;
+{% endhighlight %}
+
+After the exploration, we correct the map in 4 rounds:
+
+1 - We correct the non-visited squares on the map by voting (we look at the squares around).
+
+{% highlight clike linenos=table %}
+numberOfEmptySquaresAround = 0;
+numberOfObstaclesAround = 0;
+numberOfNonVisistedAround = 0;
+
+for y = 0,...,MAP_HEIGHT-1 {
+  for x = 0,...,MAP_WIDTH-1 {
+    if (map[y][x] == NOT_VISITED) {
+      We look at the squares (x,y-1) (if y >= 1), (x,y+1) (if y < MAP_HEIGHT-1), (x-1,y) (if x >= 1) and (x+1,y) (if x < MAP_WIDTH-1);
+      numberOfEmptySquaresAround = the number of empty squares within the 4 squares;
+      numberOfObstaclesAround = the number of obstacle squares within the 4 squares;
+      numberOfNonVisistedAround = the number of non-visited squares within the 4 squares;
+
+      If numberOfObstaclesAround is larger than numberOfEmptySquaresAround and numberOfNonVisistedAround, change (x,y) to an obstacle:
+      map[y][x] = OBSTACLE;
+
+      If numberOfEmptySquaresAround is larger than numberOfObstaclesAround and numberOfNonVisistedAround, change (x,y) to empty:
+      map[y][x] = EMPTY;
+    }
+    numberOfEmptySquaresAround = 0;
+    numberOfObstaclesAround = 0;
+    numberOfNonVisistedAround = 0;
+  }
+}
+{% endhighlight %}
+
+2 - We correct the empty squares by eliminating those surrounded by three obstacles.
+
+{% highlight clike linenos=table %}
+numberOfObstaclesAround = 0;
+
+for y = 0,...,MAP_HEIGHT-1 {
+  for x = 0,...,MAP_WIDTH-1 {
+    if (map[y][x] == EMPTY) {
+      We look at the squares (x,y-1) (if y >= 1), (x,y+1) (if y < MAP_HEIGHT-1), (x-1,y) (if x >= 1) and (x+1,y) (if x < MAP_WIDTH-1);
+      numberOfObstaclesAround = the number of obstacle squares within the 4 squares;
+
+      If numberOfObstaclesAround is larger than three, change (x,y) to an obstacle:
+      map[y][x] = OBSTACLE;
+    }
+    numberOfObstaclesAround = 0;
+  }
+}
+{% endhighlight %}
+
+3 - We correct again the non-visited squares on the map by voting.
+4 - We substitute non-visited squares by empty squares.
+
+{% highlight clike linenos=table %}
+for y = 0,...,MAP_HEIGHT-1 {
+  for x = 0,...,MAP_WIDTH-1 {
+    if (map[y][x] == NOT_VISITED) {
+      map[y][x] = EMPTY;
+    }
+  }
+}
+{% endhighlight %}
+
+After the correcting, the map is ready and we send it to the server: the obstacles are represented with red squares; the empty squares are white.
+
 
 ## COMPETITION WITH OTHER ROBOTS
 The strategy adopted to compete with other robots was to release an obstacle in the front of the first non-movable obstacle detected so as to mislead other teams about the identity of the obstacle.
