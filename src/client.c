@@ -14,11 +14,12 @@
 #include "main.h"
 #include "navigation.h"
 
-
 int s;
 uint16_t msgId = 0x0000;
 
 char sending = 0, receiving = 1;
+
+pthread_t receivingThread;
 
 void initClient() {
   struct sockaddr_rc addr = {0};
@@ -36,8 +37,9 @@ void initClient() {
   status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
 
   if (!status) {
-    while (receiving) {
-      receive();
+    if (pthread_create(&receivingThread, NULL, receivingMessages, NULL) == -1) { // Start the thread using ‘move_eyes’ function
+      fprintf(printFile,"pthread_create");
+      exit(EXIT_FAILURE);
     }
   } else {
     fprintf(printFile, "ERROR: Failed to connect to server...\n");
@@ -48,12 +50,28 @@ void initClient() {
 
 void closeClient() {
   receiving = 0; // Stop receiving
+  if (pthread_join(receivingMessages, NULL)) {
+		fprintf(printFile,"ERROR: Failed to close the update thread.\n");
+		exit(EXIT_FAILURE);
+	}
+  
   exploring = 0; // Stop exploring
+  if (pthread_join(move_eyes, NULL)) {
+		fprintf(printFile,"ERROR: Failed to close the update thread.\n");
+		exit(EXIT_FAILURE);
+	}
+  
   if (updating != 0) { // Stop updating the position
     freePosition();
   }
   stopRunning(); // Stop running
   close(s); // Close the socket
+}
+
+void* receivingMessages() {
+  while (receiving) {
+    receive();
+  }
 }
 
 void receive() {
@@ -160,13 +178,11 @@ void send_map() {
   if (!sending) {
     return ;
   }
-  correctMap(); // Correct the map before sending it to the server
   printf ("Sending the map to the server...\n");
   for (int y = 0; y < MAP_HEIGHT; y++) {
     for (int x = 0; x < MAP_WIDTH; x++) {
-      if (map[y][x] != NOT_VISITED) {
-        fprintf(printFile,"The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == EMPTY ? "EMPTY" : "OBSTACLE"));
-      }
+      fprintf(printFile,"The state of the position (%d,%d) is: %s.\n",x,y,(map[y][x] == EMPTY ? "EMPTY" : "OBSTACLE"));
+
       *((uint16_t *) string) = msgId++; // ID
       string[2] = TEAM_ID; // Source
       string[3] = 0xFF; // Destination = Server
@@ -179,14 +195,10 @@ void send_map() {
         string[9] = 200;
         string[10] = 0;
         string[11] = 0;
-      } else if (map[y][x] == EMPTY) { // Indicate the empty position with a white square
+      } else { // Indicate the empty position with a white square
         string[9] = 255;
         string[10] = 255;
         string[11] = 255;
-      } else { // Indicate the non-visited position with a gray square
-        string[9] = 128;
-        string[10] = 128;
-        string[11] = 128;
       }
       write(s, string, 12);
       Sleep(10);
