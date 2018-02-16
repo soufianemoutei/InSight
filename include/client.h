@@ -12,6 +12,8 @@ extern uint16_t msgId;
 extern char receiving; // If receiving = 1, the robot can receive messages from the server as long as the latter sends them
 extern char sending; // If sending = 1, the robot can send messages to the server
 
+extern pthread_t receivingThread; // A thread to receive messages
+
 void initClient(); // Connecting to the server and start reading messages
 void closeClient(); // This function is called when the server sends a STOP message
 

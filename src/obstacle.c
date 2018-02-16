@@ -20,11 +20,13 @@ char isBall() {
   // /*
   int color = getColorValue(); // If it equals 5, the color is red.
 
-  turnSonar(-10);
+  turnSonar(-20);
   int colorRight = getColorValue();
 
-  turnSonar(20);
+  turnSonar(40);
   int colorLeft = getColorValue();
+  
+  turnSonar(-20);
 
   return (color == 5 && colorRight != 5 && colorLeft != 5); // The obstacle is a red ball and not a red non-movable obstacle
 
