@@ -232,6 +232,8 @@ for y = 0,...,MAP_HEIGHT-1 {
 {% endhighlight %}
 
 3 - We correct again the non-visited squares on the map by voting.
+
+
 4 - We substitute non-visited squares by empty squares.
 
 {% highlight clike linenos=table %}
